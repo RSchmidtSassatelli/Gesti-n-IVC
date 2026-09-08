@@ -46,6 +46,19 @@
     /* Excepción: Altas y Bajas usa rojo/verde de estado, no la paleta de marca. */
     --status-good: #0ca30c;
     --status-critical: #d03b3b;
+
+    /* Paleta nueva (2026-09), sólo para los gráficos de la pestaña Sueldos —
+       las --ivc-series-N, --ivc-turquesa e --ivc-azul-oscuro de arriba siguen
+       tal cual para el resto de la UI (pestañas, botones, textos) y para los
+       demás módulos (Compras/Costos/Ventas/Productividad), que no cambian. */
+    --sld-navy: #0A3540;
+    --sld-teal: #1B6E7A;
+    --sld-blue: #3B8EA5;
+    --sld-blue-light: #8FBCC3;
+    --sld-slate: #5F7481;
+    --sld-sage: #7A9E7E;
+    --sld-olive: #4C7A47;
+    --sld-pine: #2E634B;
   }
 
   * { box-sizing: border-box; }
@@ -163,6 +176,20 @@
     background: var(--surface-1);
     color: var(--text-primary);
   }
+  .filters-title {
+    font-size: 12.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--ivc-azul-oscuro);
+  }
+  .periodo-label {
+    margin-left: auto;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--ivc-turquesa);
+    white-space: nowrap;
+  }
 
   main { max-width: 1180px; margin: 0 auto; padding: 22px 24px 60px; }
 
@@ -196,15 +223,65 @@
     border-radius: 10px;
     padding: 14px 16px;
   }
-  .kpi-tile .label { font-size: 12px; color: var(--text-secondary); }
+  /* Jerarquía de tamaños en las tarjetas de Resumen General (Sueldos): Título
+     + Valor + Mes-Año (el trío "principal") apenas más grandes que el Detalle
+     y que el texto dentro de la caja de comparación — a propósito sutil, no
+     un contraste fuerte. */
+  .kpi-tile .label { font-size: 12.5px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; }
+
+  /* Ícono de información (símbolo estándar "info" de Material Icons/Google)
+     al lado del título de un KPI — hover o click muestran una burbuja con la
+     aclaración del indicador. Sólo se agrega en las tarjetas que lo
+     necesitan (t.info en renderKpis). Se dibuja como SVG (no como carácter
+     de texto: el glyph Unicode "ⓘ" se renderiza mal —solo el círculo, casi
+     sin la "i"— en varias fuentes/sistemas) para que se vea siempre completo
+     y nítido a cualquier tamaño. */
+  .kpi-info { position: relative; display: inline-flex; align-items: center; }
+  .kpi-info-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px; height: 14px; color: var(--text-muted);
+    cursor: pointer; user-select: none; flex: none;
+  }
+  .kpi-info-icon svg { display: block; width: 100%; height: 100%; }
+  .kpi-info-icon:hover { color: var(--ivc-azul-oscuro); }
+  .kpi-info-bubble {
+    display: none;
+    position: absolute; z-index: 20; bottom: calc(100% + 6px); left: 50%;
+    transform: translateX(-50%);
+    width: 220px; max-width: 60vw;
+    background: var(--ivc-azul-oscuro); color: #fff;
+    font-size: 11px; font-weight: 400; line-height: 1.4;
+    padding: 8px 10px; border-radius: 7px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    white-space: normal;
+  }
+  .kpi-info:hover .kpi-info-bubble, .kpi-info.open .kpi-info-bubble { display: block; }
   .kpi-tile .value {
     font-size: 28px; font-weight: 600; color: var(--ivc-azul-oscuro);
     margin-top: 4px; font-variant-numeric: proportional-nums;
   }
   .kpi-tile .value.text-value { font-size: 18px; line-height: 1.3; white-space: normal; }
-  .kpi-tile .sub { font-size: 11.5px; color: var(--text-muted); margin-top: 3px; }
+  .kpi-tile .sub { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; line-height: 1.25; }
+  .kpi-tile .periodo { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
   .kpi-tile .deltas { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
   .kpi-tile .deltas span { white-space: nowrap; }
+
+  /* Caja de comparación con el mes anterior/Febrero — solo para los KPIs de
+     Resumen General (hoja Sueldos) que tienen esa comparación. Tonos azules
+     a propósito, para distinguirla del resto del texto (gris) de la tarjeta. */
+  .kpi-tile .kpi-delta-box {
+    margin-top: 8px;
+    padding: 6px 9px;
+    border-radius: 7px;
+    background: rgba(31, 95, 168, 0.08);
+    border: 1.5px solid rgba(31, 95, 168, 0.4);
+  }
+  .kpi-tile .kpi-delta-row {
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: #1f5fa8;
+    font-weight: 600;
+  }
 
   .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 14px; }
   .card {
@@ -212,6 +289,11 @@
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 16px 18px 12px;
+    /* Grid estira todas las cards de una fila a la altura de la más alta
+       (ej. una tarjeta con gráfico de barras corto junto a una con gráfico de
+       líneas más alto). Sin esto, el contenido quedaba pegado arriba y el
+       espacio de sobra caía como un bloque vacío debajo. */
+    display: flex; flex-direction: column;
   }
   .card.full { grid-column: 1 / -1; }
   .card .card-head {
@@ -226,6 +308,14 @@
   }
   .btn-ghost.active { background: var(--ivc-turquesa); color: #fff; border-color: var(--ivc-turquesa); }
   .chart-holder { width: 100%; }
+  /* Sólo el chart-holder que cuelga directo de .card (no el anidado dentro de
+     .pie-card-body, que ya se centra por su cuenta): ocupa el espacio
+     sobrante de la tarjeta y centra verticalmente el gráfico dentro de él.
+     Columna (no fila): algunos chart-holder tienen 2 hijos apilados (la
+     leyenda que arma renderLineChart() arriba del <svg>, o el
+     legend-check-row de checkboxes) — con flex-direction por defecto (row)
+     esos dos terminaban lado a lado en vez de uno arriba del otro. */
+  .card > .chart-holder { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
   .chart-holder svg { width: 100%; height: auto; display: block; overflow: visible; }
   .table-wrap { display: none; }
   .table-wrap.visible { display: block; }
@@ -318,22 +408,21 @@
 <div id="moduloSueldos" class="modulo-panel">
 
 <div class="filters">
+  <span class="filters-title">Filtros</span>
   <label>Categoría
     <select id="filtroCategoria"><option value="Todas">Todas</option></select>
   </label>
+  <label>Mes
+    <select id="filtroMesSueldos"><option value="todos">Todos los meses</option></select>
+  </label>
   <button type="button" class="btn-ghost" id="btnLimpiarFiltrosCategoria">Limpiar filtros</button>
+  <span class="periodo-label" id="periodoSeleccionadoLabel">Período seleccionado: —</span>
 </div>
 
 <main>
 
   <section class="block">
     <h2>Resumen General</h2>
-    <div class="filters" style="padding:10px 16px; border:none; position:static; margin-bottom:14px;">
-      <label>Mes
-        <select id="filtroMesResumen"><option value="todos">Todos (año completo)</option></select>
-      </label>
-      <button type="button" class="btn-ghost" id="btnLimpiarFiltrosResumen">Limpiar filtros</button>
-    </div>
     <div class="kpi-row cols-4" id="kpiRow"></div>
   </section>
 
@@ -364,25 +453,18 @@
 
   <section class="block">
     <h2>Costos Totales</h2>
-    <div class="filters" style="padding:10px 16px; border:none; position:static; margin-bottom:14px;">
-      <label>Mes
-        <select id="filtroMesCosto"><option value="todos">Todos (ver año completo)</option></select>
-      </label>
-      <button type="button" class="btn-ghost" id="btnLimpiarFiltrosCosto">Limpiar filtros</button>
-    </div>
     <div class="cards">
       <div class="card full">
         <div class="card-head">
-          <h3>Total Movimiento de Sueldos, por Mes</h3>
+          <h3>Movimientos de Sueldos</h3>
           <div class="toolbar"><button class="btn-ghost" data-toggle-table="chartCostoMensual">Ver tabla</button></div>
         </div>
-        <p class="caption">Columnas apiladas: Total Transferido Sueldos + DDJJ F931 + UOCRA + IERIC + FODECO. La altura total de cada columna (etiqueta arriba) es el TOTAL MOVIMIENTO SUELDOS del mes — el mismo valor del KPI "Costo Total del Mes" de arriba.</p>
+        <p class="caption">La altura total de cada columna corresponde al costo total en sueldos + aportes + contribuciones del mes.</p>
         <div class="chart-holder" id="chartCostoMensual"></div>
         <div class="table-wrap" id="chartCostoMensual-table"></div>
       </div>
       <div class="card">
         <div class="card-head"><h3>Erogación Mensual (sin Contribuciones)</h3></div>
-        <p class="caption">Suma de EROGACIÓN (SIN CONTRIBUCIONES), Q1 + Q2, por mes.</p>
         <div class="chart-holder" id="chartErogacionMensual"></div>
       </div>
       <div class="card">
@@ -390,15 +472,31 @@
         <p class="caption">Q1 vs. Q2 de cada mes.</p>
         <div class="chart-holder" id="chartErogacionQuincenal"></div>
       </div>
+      <div class="card full">
+        <div class="card-head">
+          <h3>Variación del Valor de la Hora por Categoría</h3>
+          <div class="toolbar"><button class="btn-ghost" data-toggle-table="chartPrecios">Ver tabla</button></div>
+        </div>
+        <p class="caption">Una línea sólida por categoría con el Precio Hora Básico UOCRA (valor de convenio) y una línea punteada por categoría con el Precio real pagado por IVC. Destildá un grupo para ocultar sus 4 líneas.</p>
+        <div class="legend-check-row" id="legendPrecios"></div>
+        <div class="chart-holder" id="chartPrecios"></div>
+        <div class="table-wrap" id="chartPrecios-table"></div>
+      </div>
+      <div class="card full">
+        <div class="card-head">
+          <h3>Costo Real por Hora</h3>
+          <div class="toolbar"><button class="btn-ghost" data-toggle-table="chartCostoRealHora">Ver tabla</button></div>
+        </div>
+        <p class="caption">Costo Total del Mes (Sueldos) ÷ Horas Totales Trabajadas de ese mes — a diferencia del gráfico de arriba, que muestra el valor de convenio por categoría, este es el costo real y promedio que termina saliendo cada hora pagada, con antigüedad, adicionales y horas extra ya adentro. Se compara contra el Costo Teórico UOCRA promedio (el promedio simple del Precio Hora Básico UOCRA entre las categorías con precio cargado ese mes).</p>
+        <div class="chart-holder" id="chartCostoRealHora"></div>
+        <div class="table-wrap" id="chartCostoRealHora-table"></div>
+      </div>
     </div>
   </section>
 
   <section class="block">
     <h2>Horas y Adicionales</h2>
     <div class="filters" style="padding:10px 16px; border:none; position:static; margin-bottom:14px;">
-      <label>Mes
-        <select id="filtroHorasMes"><option value="todos">Todos</option></select>
-      </label>
       <label>Quincena
         <select id="filtroHorasQuincena">
           <option value="todas">Todas</option>
@@ -406,7 +504,6 @@
           <option value="Q2">Q2</option>
         </select>
       </label>
-      <button type="button" class="btn-ghost" id="btnLimpiarFiltrosHoras">Limpiar filtros</button>
     </div>
 
     <div class="kpi-row" id="kpiHorasRow" style="margin-bottom:14px;"></div>
@@ -433,19 +530,6 @@
         </div>
         <p class="caption">Según los filtros de Mes, Quincena y Categoría. Hacé clic en un encabezado para ordenar.</p>
         <div class="scroll-table" id="tablaHorasPersona"></div>
-      </div>
-      <div class="card full">
-        <div class="card-head">
-          <h3>Variación del Valor de la Hora por Categoría</h3>
-          <div class="toolbar">
-            <button class="btn-ghost active" data-precio-tab="basico">Precio Hora Básico UOCRA</button>
-            <button class="btn-ghost" data-precio-tab="bruto">Bruto de IVC</button>
-            <button class="btn-ghost" data-toggle-table="chartPrecios">Ver tabla</button>
-          </div>
-        </div>
-        <p class="caption">Una línea por categoría, a lo largo del año con datos de precios cargados.</p>
-        <div class="chart-holder" id="chartPrecios"></div>
-        <div class="table-wrap" id="chartPrecios-table"></div>
       </div>
     </div>
   </section>
@@ -754,12 +838,21 @@
   var MESES_CORTO = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
   var CATEGORIAS_ORDEN = ['Ayudante', 'Medio Oficial', 'Oficial', 'Oficial Especializado', 'Otro'];
+  // Colores pedidos puntualmente para Personal Activo por Categoría, sobre la
+  // paleta nueva de la marca (--sld-*, ver :root) — como CAT_COLOR es
+  // compartido, quedan iguales en Horas por Categoría y en Variación del
+  // Valor de la Hora por Categoría (misma categoría, mismo color en todo el
+  // módulo). 'Otro' no se pidió puntualmente: usa --sld-pine, el tono que
+  // queda más separado en claridad de los otros 4.
+  // OJO: el validador de paletas de la guía de dataviz marca este set de 4
+  // como por debajo del piso de distinción para visión normal (ver aviso en
+  // el chat) — se implementó igual porque son los hex exactos pedidos.
   var CAT_COLOR = {
-    'Ayudante': 'var(--ivc-series-1)',
-    'Medio Oficial': 'var(--ivc-series-2)',
-    'Oficial': 'var(--ivc-series-3)',
-    'Oficial Especializado': 'var(--ivc-series-4)',
-    'Otro': 'var(--ivc-series-5)'
+    'Ayudante': 'var(--sld-blue)',
+    'Medio Oficial': 'var(--sld-blue-light)',
+    'Oficial': 'var(--sld-slate)',
+    'Oficial Especializado': 'var(--sld-sage)',
+    'Otro': 'var(--sld-pine)'
   };
   var CSS = getComputedStyle(document.documentElement);
   function cssVar(name) { return CSS.getPropertyValue(name).trim(); }
@@ -956,8 +1049,14 @@
       var li = document.createElement('div');
       li.className = 'legend-item';
       var sw = document.createElement('span');
-      sw.className = 'legend-swatch' + (it.line ? ' line' : '') + (it.hollow ? ' hollow' : '');
-      if (it.hollow) { sw.style.borderColor = it.color; } else { sw.style.background = it.color; }
+      sw.className = 'legend-swatch' + (it.line ? ' line' : '') + (it.hollow ? ' hollow' : '') + (it.dashed ? ' dashed' : '');
+      if (it.hollow) {
+        sw.style.borderColor = it.color;
+      } else if (it.dashed) {
+        sw.style.background = 'repeating-linear-gradient(to right, ' + it.color + ' 0, ' + it.color + ' 4px, transparent 4px, transparent 7px)';
+      } else {
+        sw.style.background = it.color;
+      }
       li.appendChild(sw);
       var txt = document.createElement('span');
       txt.textContent = it.label;
@@ -1321,7 +1420,9 @@
       var serOpacity = ser.opacity != null ? ser.opacity : 1;
       segs.forEach(function (seg) {
         var d = seg.map(function (p, i) { return (i === 0 ? 'M' : 'L') + p[0] + ',' + p[1]; }).join(' ');
-        plot.appendChild(el('path', { d: d, fill: 'none', stroke: ser.color, 'stroke-width': opts.strokeWidth || 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: serOpacity }));
+        var pathAttrs = { d: d, fill: 'none', stroke: ser.color, 'stroke-width': opts.strokeWidth || 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: serOpacity };
+        if (ser.dash) pathAttrs['stroke-dasharray'] = (ser.dash === true) ? '6,4' : ser.dash;
+        plot.appendChild(el('path', pathAttrs));
       });
       pts.forEach(function (p) {
         if (!p) return;
@@ -1362,7 +1463,7 @@
     svg.appendChild(plot);
     container.appendChild(svg);
     if (series.length > 1) {
-      legendRow(container, series.map(function (s) { return { color: s.color, label: s.name, line: true }; }));
+      legendRow(container, series.map(function (s) { return { color: s.color, label: s.name, line: true, dashed: !!s.dash }; }));
       container.insertBefore(container.lastChild, svg);
     }
   }
@@ -1424,7 +1525,12 @@
   // ============================================================
   var RAW = {};
   var anioOperativo = null; // último año con datos de nómina reales (costo_mensual) — no editable por el usuario
-  var state = { categoria: 'Todas', anioAltasBajas: null, mesResumen: null, mesCosto: 'todos', horasMes: 'todos', horasQuincena: 'todas', busqueda: '' };
+  // state.mes es el único filtro de Mes para toda la hoja Sueldos (Resumen
+  // General, Costos Totales y Horas y Adicionales) — antes cada sección tenía
+  // su propio filtro de Mes por separado (mesResumen/mesCosto/horasMes),
+  // lo que podía mostrar tres períodos distintos a la vez y confundir. Ahora
+  // un solo selector, en la barra de filtros de arriba, maneja las tres.
+  var state = { categoria: 'Todas', anioAltasBajas: null, mes: null, horasQuincena: 'todas', busqueda: '', precioGrupos: { basico: true, bruto: true } };
 
   var anioOperativoCompras = null; // último año con facturas cargadas
   var FILTROS_FACTURA_CAMPOS = [
@@ -1601,59 +1707,38 @@
       var o = document.createElement('option'); o.value = c; o.textContent = c; selCat.appendChild(o);
     });
     selCat.addEventListener('change', function () { state.categoria = selCat.value; renderAll(); });
-    document.getElementById('btnLimpiarFiltrosCategoria').addEventListener('click', function () {
-      state.categoria = 'Todas'; selCat.value = 'Todas'; renderAll();
-    });
 
-    // Resumen general: por defecto muestra el último mes con datos de nómina
-    // cargados (el mismo criterio que ya usaban Costo Total y Horas), pero se
-    // puede elegir cualquier otro mes para ver el resumen "como estaba" en ese
-    // momento — Personal Total, Altas y Bajas se reconstruyen a partir de la
-    // evolución de altas/bajas del mes elegido en vez de usar el total de hoy.
-    var selMesResumen = document.getElementById('filtroMesResumen');
+    // Filtro de Mes único para toda la hoja Sueldos (Resumen General, Costos
+    // Totales y Horas y Adicionales) — reemplaza los tres filtros de Mes que
+    // existían antes por sección, que podían quedar en meses distintos entre
+    // sí y confundir sobre qué período se estaba mirando. Por defecto muestra
+    // el último mes con datos de nómina cargados; se puede elegir cualquier
+    // otro mes, o "Todos los meses" para ver el acumulado del año — Personal
+    // Total, Altas y Bajas se reconstruyen a partir de la evolución de
+    // altas/bajas del mes elegido en vez de usar el total de hoy.
+    var selMesSueldos = document.getElementById('filtroMesSueldos');
     MESES_DISPLAY.forEach(function (m, i) {
-      var o = document.createElement('option'); o.value = i; o.textContent = m; selMesResumen.appendChild(o);
+      var o = document.createElement('option'); o.value = i; o.textContent = m; selMesSueldos.appendChild(o);
     });
     var costoAnioInicial = RAW.costoMensual.filter(function (r) { return r.anio === anioOperativo; });
     var mesResumenDefault = costoAnioInicial.length ? costoAnioInicial[costoAnioInicial.length - 1].mesIdx : new Date().getMonth();
-    state.mesResumen = mesResumenDefault;
-    selMesResumen.value = mesResumenDefault;
-    selMesResumen.addEventListener('change', function () { state.mesResumen = selMesResumen.value === 'todos' ? 'todos' : Number(selMesResumen.value); renderKpis(); });
-    document.getElementById('btnLimpiarFiltrosResumen').addEventListener('click', function () {
-      state.mesResumen = 'todos'; selMesResumen.value = 'todos'; renderKpis();
+    state.mes = mesResumenDefault;
+    selMesSueldos.value = mesResumenDefault;
+    actualizarPeriodoSeleccionado();
+    selMesSueldos.addEventListener('change', function () {
+      state.mes = selMesSueldos.value === 'todos' ? 'todos' : Number(selMesSueldos.value);
+      actualizarPeriodoSeleccionado();
+      renderAll();
     });
-
-    var selMesCosto = document.getElementById('filtroMesCosto');
-    MESES_DISPLAY.forEach(function (m, i) {
-      var o = document.createElement('option'); o.value = i; o.textContent = m; selMesCosto.appendChild(o);
-    });
-    selMesCosto.addEventListener('change', function () { state.mesCosto = selMesCosto.value; renderCostoErogacion(); });
-    document.getElementById('btnLimpiarFiltrosCosto').addEventListener('click', function () {
-      state.mesCosto = 'todos'; selMesCosto.value = 'todos'; renderCostoErogacion();
-    });
-
-    var selHMes = document.getElementById('filtroHorasMes');
-    MESES_DISPLAY.forEach(function (m, i) {
-      var o = document.createElement('option'); o.value = i; o.textContent = m; selHMes.appendChild(o);
-    });
-    selHMes.addEventListener('change', function () { state.horasMes = selHMes.value; renderHorasTodo(); });
     document.getElementById('filtroHorasQuincena').addEventListener('change', function (e) { state.horasQuincena = e.target.value; renderHorasTodo(); });
-    document.getElementById('btnLimpiarFiltrosHoras').addEventListener('click', function () {
-      state.horasMes = 'todos'; selHMes.value = 'todos';
+    document.getElementById('btnLimpiarFiltrosCategoria').addEventListener('click', function () {
+      state.categoria = 'Todas'; selCat.value = 'Todas';
+      state.mes = 'todos'; selMesSueldos.value = 'todos';
       state.horasQuincena = 'todas'; document.getElementById('filtroHorasQuincena').value = 'todas';
-      renderHorasTodo();
+      actualizarPeriodoSeleccionado();
+      renderAll();
     });
     document.getElementById('buscarPersona').addEventListener('input', function (e) { state.busqueda = e.target.value.toLowerCase(); renderHorasPersona(); });
-
-    document.querySelectorAll('[data-precio-tab]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        document.querySelectorAll('[data-precio-tab]').forEach(function (b) { b.classList.remove('active'); });
-        btn.classList.add('active');
-        state.precioTab = btn.getAttribute('data-precio-tab');
-        renderPrecios();
-      });
-    });
-    state.precioTab = 'basico';
 
     // --- Módulo Compras: años/meses disponibles + filtros dinámicos ---
     var aniosFacturas = Array.from(new Set(RAW.facturas.map(function (f) { return f.anio; }))).sort(function (a, b) { return a - b; });
@@ -2059,7 +2144,7 @@
 
     // Tabs de familia para el gráfico de Evolución (Postes/Crucetas/
     // Ménsulas/Vínculos/Otros) — selección única, mismo patrón que las tabs
-    // "Precio Hora Básico UOCRA / Bruto de IVC" de Sueldos.
+    // "UOCRA / IVC" de Sueldos.
     var tabsFamilia = document.querySelectorAll('[data-familia-tab]');
     tabsFamilia.forEach(function (tab) {
       tab.addEventListener('click', function () {
@@ -2241,6 +2326,7 @@
     renderCostoMensual();
     renderErogacionMensual();
     renderErogacionQuincenal();
+    renderCostoRealPorHora();
   }
 
   function renderHorasTodo() {
@@ -2263,6 +2349,16 @@
     var palabra = abs === 1 ? singular : plural;
     var signo = n > 0 ? '+' : '−';
     return signo + formatNum(abs) + ' ' + palabra + ' ' + comparativo;
+  }
+
+  // Misma idea que formatDeltaTexto pero para montos en pesos (Costo Total,
+  // Precio Categoría): "+$7.000.000 respecto del mes anterior", etc.
+  function formatDeltaMoney(n, comparativo) {
+    if (n === null || n === undefined) return null;
+    n = Math.round(n);
+    if (n === 0) return 'Sin cambios ' + comparativo;
+    var signo = n > 0 ? '+' : '−';
+    return signo + formatMoney(Math.abs(n)) + ' ' + comparativo;
   }
 
   // Reconstruye el cambio neto de dotación (altas - bajas) de un mes puntual,
@@ -2316,6 +2412,20 @@
     return sum;
   }
 
+  // Cantidad de personas distintas que cobraron algún sueldo en el año, hasta
+  // el mes indicado inclusive — a diferencia de la dotación vigente (foto de
+  // hoy), esto suma a cualquiera que haya pasado por la nómina en el período,
+  // incluidas bajas ya operadas. Usa RAW.horas (una fila por persona y
+  // quincena en SUELDOS Y APORTES) porque ahí ya tenemos el nombre de cada
+  // persona por período, sin necesidad de un dato nuevo del backend.
+  function personasDistintasEnAnio(mesTope) {
+    var vistas = {};
+    RAW.horas.forEach(function (r) {
+      if (r.anio === anioOperativo && r.mesIdx <= mesTope && r.persona) vistas[r.persona] = true;
+    });
+    return Object.keys(vistas).length;
+  }
+
   // Precio vigente de una categoría "a la fecha" del mes elegido: el último
   // valor cargado en Precios con mes <= mesRef (no usa precios futuros).
   function precioAFinDeMes(cat, mesRef) {
@@ -2327,14 +2437,59 @@
     return rows[rows.length - 1];
   }
 
+  // Leyenda fija de la barra de filtros de Sueldos ("Período seleccionado:
+  // Julio 2026" / "Período seleccionado: Todos los meses de 2026") — se
+  // actualiza cada vez que cambia el filtro de Mes único de la hoja.
+  function actualizarPeriodoSeleccionado() {
+    var el = document.getElementById('periodoSeleccionadoLabel');
+    if (!el) return;
+    if (state.mes === 'todos') {
+      el.textContent = 'Período seleccionado: Todos los meses de ' + anioOperativo;
+    } else {
+      el.textContent = 'Período seleccionado: ' + MESES_DISPLAY[state.mes] + ' ' + anioOperativo;
+    }
+  }
+
+  // Ícono de información (ⓘ) para el título de un KPI — hover o click muestran
+  // una burbuja con el texto de t.info. El listener a nivel de documento (que
+  // cierra cualquier burbuja abierta al hacer click afuera) se agrega una
+  // sola vez, la primera vez que se pide un ícono.
+  function kpiInfoIcon(texto) {
+    var wrap = document.createElement('span'); wrap.className = 'kpi-info';
+    var icon = document.createElement('span'); icon.className = 'kpi-info-icon';
+    // Símbolo "info" estándar de Material Icons (Google) — círculo con "i",
+    // el mismo que se usa en Gmail/Drive/Sheets para este tipo de aclaración.
+    icon.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">'
+      + '<path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>'
+      + '</svg>';
+    icon.setAttribute('tabindex', '0');
+    icon.setAttribute('role', 'button');
+    icon.setAttribute('aria-label', texto);
+    var bubble = document.createElement('div'); bubble.className = 'kpi-info-bubble'; bubble.textContent = texto;
+    icon.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      var wasOpen = wrap.classList.contains('open');
+      document.querySelectorAll('.kpi-info.open').forEach(function (o) { o.classList.remove('open'); });
+      if (!wasOpen) wrap.classList.add('open');
+    });
+    wrap.appendChild(icon); wrap.appendChild(bubble);
+    if (!window.__kpiInfoOutsideClickWired) {
+      window.__kpiInfoOutsideClickWired = true;
+      document.addEventListener('click', function () {
+        document.querySelectorAll('.kpi-info.open').forEach(function (o) { o.classList.remove('open'); });
+      });
+    }
+    return wrap;
+  }
+
   function renderKpis() {
     var wrap = document.getElementById('kpiRow');
     wrap.innerHTML = '';
     var rd = RAW.resumenDotacion || {};
     var costoAnio = RAW.costoMensual.filter(function (r) { return r.anio === anioOperativo; });
     var ultimoConDatos = costoAnio[costoAnio.length - 1];
-    var esTodos = state.mesResumen === 'todos';
-    var mesRef = (!esTodos && state.mesResumen !== null) ? state.mesResumen : (ultimoConDatos ? ultimoConDatos.mesIdx : new Date().getMonth());
+    var esTodos = state.mes === 'todos';
+    var mesRef = (!esTodos && state.mes !== null) ? state.mes : (ultimoConDatos ? ultimoConDatos.mesIdx : new Date().getMonth());
     var mesRefNombre = MESES_DISPLAY[mesRef];
     var costoMesRef = costoAnio.find(function (r) { return r.mesIdx === mesRef; });
 
@@ -2350,37 +2505,49 @@
       return total + sumNetChangeMeses(anioOperativo, mesReal, m);
     }
     var activoTotal = personalAlFinDeMes(mesRef);
-    var activoSub = 'Nómina vigente al día de la fecha';
+    // detail = línea corta de contexto (solo si hace falta aclarar algo);
+    // periodo = línea "Mes Año" (o el rango, para los acumulados) — mismo
+    // formato en todas las tarjetas de Resumen General.
+    var activoDetail = null;
+    var activoPeriodo = mesRefNombre + ' ' + anioOperativo;
     var personalDeltas = [];
     if (state.categoria !== 'Todas') {
       var fcat = (rd.por_categoria || []).find(function (x) { return normalizarCategoria(x.categoria) === state.categoria; });
       activoTotal = fcat ? fcat.cantidad : 0;
-      activoSub = 'Categoría: ' + state.categoria + ' — dato actual, no varía por mes';
+      activoDetail = 'Categoría: ' + state.categoria + ' — dato actual, no varía por mes';
+      activoPeriodo = null;
+    } else if (esTodos) {
+      // Con "Todos los meses" seleccionado, Nómina Vigente deja de ser la
+      // foto de hoy (no tendría sentido mezclada con un rango) y pasa a
+      // contar personas distintas que cobraron sueldo en algún momento del
+      // año — activos y bajas ya operadas incluidos. No hay "respecto al mes
+      // anterior" que aplique a un conteo acumulado del año, así que no se
+      // arma la caja de comparación.
+      activoTotal = personasDistintasEnAnio(mesRef);
+      activoDetail = 'Personas distintas que pasaron por la nómina en el año';
+      activoPeriodo = 'Año completo ' + anioOperativo;
     } else {
       var vsMesAnterior = netChangePersonal(anioOperativo, mesRef);
       var vsFebrero = mesRef >= MES_FEBRERO ? sumNetChangeMeses(anioOperativo, MES_FEBRERO, mesRef) : null;
-      personalDeltas.push(formatDeltaTexto(vsMesAnterior, 'persona', 'personas', 'vs. mes anterior'));
-      if (vsFebrero !== null) personalDeltas.push(formatDeltaTexto(vsFebrero, 'persona', 'personas', 'vs. Febrero'));
+      personalDeltas.push(formatDeltaTexto(vsMesAnterior, 'persona', 'personas', 'respecto del mes anterior'));
+      if (vsFebrero !== null) personalDeltas.push(formatDeltaTexto(vsFebrero, 'persona', 'personas', 'respecto a Febrero ' + anioOperativo));
       personalDeltas = personalDeltas.filter(Boolean);
     }
 
     // --- Horas trabajadas por toda la nómina + variación, para el mes elegido
     // (o acumuladas Enero→mesRef si el filtro está en "Todos") ---
-    var horasActual, horasDeltas = [], horasSub;
+    var horasActual, horasDeltas = [], horasPeriodo;
     if (esTodos) {
       horasActual = 0;
       for (var mh = 0; mh <= mesRef; mh++) horasActual += horasTotalMes(mh);
-      horasSub = 'Enero–' + mesRefNombre + ' ' + anioOperativo + ' (acumulado)';
+      horasPeriodo = 'Enero–' + mesRefNombre + ' ' + anioOperativo + ' (acumulado)';
     } else {
       horasActual = horasTotalMes(mesRef);
-      if (mesRef > 0) horasDeltas.push(formatDeltaTexto(horasActual - horasTotalMes(mesRef - 1), 'hora', 'horas', 'vs. mes anterior'));
-      if (mesRef >= MES_FEBRERO) horasDeltas.push(formatDeltaTexto(horasActual - horasTotalMes(MES_FEBRERO), 'hora', 'horas', 'vs. Febrero'));
+      if (mesRef > 0) horasDeltas.push(formatDeltaTexto(horasActual - horasTotalMes(mesRef - 1), 'hora', 'horas', 'respecto del mes anterior'));
+      if (mesRef >= MES_FEBRERO) horasDeltas.push(formatDeltaTexto(horasActual - horasTotalMes(MES_FEBRERO), 'hora', 'horas', 'respecto a Febrero ' + anioOperativo));
       horasDeltas = horasDeltas.filter(Boolean);
-      horasSub = mesRefNombre + ' ' + anioOperativo;
+      horasPeriodo = mesRefNombre + ' ' + anioOperativo;
     }
-
-    // --- Precio actual, categoría Oficial (vigente a fin del mes elegido) ---
-    var precioOficial = precioAFinDeMes('Oficial', mesRef);
 
     // --- Altas y bajas del mes elegido / acumuladas Enero→mes elegido ---
     var altasMesRef = 0, bajasMesRef = 0, altasAcum = 0, bajasAcum = 0;
@@ -2390,50 +2557,106 @@
       if (r.mesIdx <= mesRef) { altasAcum += r.altas; bajasAcum += r.bajas; }
     });
 
-    // --- Costo Total: del mes elegido, o acumulado Enero→mesRef si "Todos" ---
-    var costoTotalValor, costoTotalLabel, costoTotalSub;
+    // --- Costo Total: del mes elegido, o acumulado Enero→mesRef si "Todos" —
+    // con variación respecto al mes anterior / a Febrero cuando no es acumulado ---
+    var costoTotalValor, costoTotalLabel, costoTotalPeriodo, costoDeltas = [];
     if (esTodos) {
       var costoAcum = 0;
       costoAnio.forEach(function (r) { if (r.mesIdx <= mesRef) costoAcum += r.total; });
       costoTotalValor = formatMoney(costoAcum);
-      costoTotalLabel = 'Costo Total Acumulado en el Año';
-      costoTotalSub = 'Sueldos + Aportes + Contribuciones — Enero–' + mesRefNombre + ' ' + anioOperativo;
+      costoTotalLabel = 'Costo Laboral Total Acumulado';
+      costoTotalPeriodo = 'Enero–' + mesRefNombre + ' ' + anioOperativo;
     } else {
       costoTotalValor = costoMesRef ? formatMoney(costoMesRef.total) : '—';
-      costoTotalLabel = 'Costo Total del Mes';
-      costoTotalSub = 'Sueldos + Aportes + Contribuciones — ' + mesRefNombre + ' ' + anioOperativo;
+      costoTotalLabel = 'Costo Laboral Total';
+      costoTotalPeriodo = mesRefNombre + ' ' + anioOperativo;
+      if (costoMesRef && mesRef > 0) {
+        var costoMesAnterior = costoAnio.find(function (r) { return r.mesIdx === mesRef - 1; });
+        if (costoMesAnterior) costoDeltas.push(formatDeltaMoney(costoMesRef.total - costoMesAnterior.total, 'respecto del mes anterior'));
+      }
+      if (costoMesRef && mesRef >= MES_FEBRERO) {
+        var costoFebrero = costoAnio.find(function (r) { return r.mesIdx === MES_FEBRERO; });
+        if (costoFebrero) costoDeltas.push(formatDeltaMoney(costoMesRef.total - costoFebrero.total, 'respecto a Febrero ' + anioOperativo));
+      }
+      costoDeltas = costoDeltas.filter(Boolean);
+    }
+
+    // --- Costo Real por Hora Trabajada = Costo Laboral Total ÷ Horas Totales
+    // Trabajadas, del mismo período (mes elegido, o acumulado Enero→mesRef si
+    // "Todos") — variación calculada sobre el cociente en sí (no sobre el
+    // total ni sobre las horas por separado), respecto al mes anterior y a
+    // Febrero. En "Todos" no se arma caja de comparación, igual criterio que
+    // el resto de los KPIs acumulados de esta fila. ---
+    function costoPorHoraDeMes(mesIdx) {
+      var c = costoAnio.find(function (r) { return r.mesIdx === mesIdx; });
+      var h = horasTotalMes(mesIdx);
+      if (!c || !h) return null;
+      return c.total / h;
+    }
+    var costoRealHoraValor, costoRealHoraPeriodo, costoRealHoraDeltas = [];
+    if (esTodos) {
+      costoRealHoraValor = horasActual ? (costoAcum / horasActual) : null;
+      costoRealHoraPeriodo = 'Enero–' + mesRefNombre + ' ' + anioOperativo;
+    } else {
+      costoRealHoraValor = (costoMesRef && horasActual) ? (costoMesRef.total / horasActual) : null;
+      costoRealHoraPeriodo = mesRefNombre + ' ' + anioOperativo;
+      if (costoRealHoraValor !== null && mesRef > 0) {
+        var costoPorHoraAnterior = costoPorHoraDeMes(mesRef - 1);
+        if (costoPorHoraAnterior !== null) costoRealHoraDeltas.push(formatDeltaMoney(costoRealHoraValor - costoPorHoraAnterior, 'respecto del mes anterior'));
+      }
+      if (costoRealHoraValor !== null && mesRef >= MES_FEBRERO) {
+        var costoPorHoraFebrero = costoPorHoraDeMes(MES_FEBRERO);
+        if (costoPorHoraFebrero !== null) costoRealHoraDeltas.push(formatDeltaMoney(costoRealHoraValor - costoPorHoraFebrero, 'respecto a Febrero ' + anioOperativo));
+      }
+      costoRealHoraDeltas = costoRealHoraDeltas.filter(Boolean);
     }
 
     var tiles = [
-      { label: 'Personal Total', value: formatNum(activoTotal), sub: activoSub, deltas: personalDeltas },
+      { label: 'Nómina Vigente', value: formatNum(activoTotal), detail: activoDetail, periodo: activoPeriodo, deltaBox: personalDeltas },
       {
         label: esTodos ? 'Horas Totales Trabajadas (Año)' : 'Horas Totales Trabajadas', value: formatNum(horasActual),
-        sub: horasSub,
-        deltas: horasDeltas
+        periodo: horasPeriodo,
+        deltaBox: horasDeltas
       },
-      { label: costoTotalLabel, value: costoTotalValor, sub: costoTotalSub },
+      { label: costoTotalLabel, value: costoTotalValor, periodo: costoTotalPeriodo, deltaBox: costoDeltas, info: 'Incluye sueldos + aportes + contribuciones.' },
       {
-        label: 'Precio Categoría "Oficial"', value: precioOficial ? formatMoney(precioOficial.basico) : '—',
-        sub: precioOficial ? ('Precio Hora Básico UOCRA — ' + MESES_DISPLAY[precioOficial.mesIdx] + ' ' + precioOficial.anio) : 'Sin precio cargado hasta ' + mesRefNombre
+        label: esTodos ? 'Costo Real por Hora Trabajada (Año)' : 'Costo Real por Hora Trabajada',
+        value: costoRealHoraValor !== null ? formatMoney(costoRealHoraValor) : '—',
+        periodo: costoRealHoraPeriodo,
+        deltaBox: costoRealHoraDeltas,
+        info: 'Costo real por hora trabajada = Costo laboral total del mes / Horas totales trabajadas del mes'
       }
     ];
-    if (!esTodos) tiles.push({ label: 'Altas del Mes', value: formatNum(altasMesRef), sub: 'Altas registradas en ' + mesRefNombre });
-    tiles.push({ label: 'Altas Acumuladas en el Año', value: formatNum(altasAcum), sub: 'Altas acumuladas de Enero a ' + mesRefNombre });
-    if (!esTodos) tiles.push({ label: 'Bajas del Mes', value: formatNum(bajasMesRef), sub: 'Bajas registradas en ' + mesRefNombre });
-    tiles.push({ label: 'Bajas Acumuladas en el Año', value: formatNum(bajasAcum), sub: 'Bajas acumuladas de Enero a ' + mesRefNombre });
+    if (!esTodos) tiles.push({ label: 'Altas del Mes', value: formatNum(altasMesRef), detail: 'Altas registradas', periodo: mesRefNombre + ' ' + anioOperativo });
+    tiles.push({ label: 'Altas Acumuladas en el Año', value: formatNum(altasAcum), detail: 'Altas acumuladas', periodo: 'Enero–' + mesRefNombre + ' ' + anioOperativo });
+    if (!esTodos) tiles.push({ label: 'Bajas del Mes', value: formatNum(bajasMesRef), detail: 'Bajas registradas', periodo: mesRefNombre + ' ' + anioOperativo });
+    tiles.push({ label: 'Bajas Acumuladas en el Año', value: formatNum(bajasAcum), detail: 'Bajas acumuladas', periodo: 'Enero–' + mesRefNombre + ' ' + anioOperativo });
     tiles.forEach(function (t) {
       var d = document.createElement('div'); d.className = 'kpi-tile';
-      var l = document.createElement('div'); l.className = 'label'; l.textContent = t.label;
+      var l = document.createElement('div'); l.className = 'label';
+      var lTxt = document.createElement('span'); lTxt.textContent = t.label;
+      l.appendChild(lTxt);
+      if (t.info) l.appendChild(kpiInfoIcon(t.info));
       var v = document.createElement('div'); v.className = 'value'; v.textContent = t.value;
       d.appendChild(l); d.appendChild(v);
-      if (t.sub) {
-        var s = document.createElement('div'); s.className = 'sub'; s.textContent = t.sub;
-        d.appendChild(s);
+      // Siempre se reserva el renglón de Detalle, aunque esté vacío — así el
+      // Mes/Año y la caja de comparación quedan a la misma altura en todas las
+      // tarjetas de la fila, tengan o no detalle (ej. Nómina Vigente y Horas
+      // Totales Trabajadas no tienen detalle, pero Costo Total y Precio sí).
+      var det = document.createElement('div'); det.className = 'sub'; det.textContent = t.detail || ' ';
+      if (!t.detail) det.setAttribute('aria-hidden', 'true');
+      d.appendChild(det);
+      if (t.periodo) {
+        var per = document.createElement('div'); per.className = 'periodo'; per.textContent = t.periodo;
+        d.appendChild(per);
       }
-      if (t.deltas && t.deltas.length) {
-        var dl = document.createElement('div'); dl.className = 'deltas';
-        dl.textContent = t.deltas.join(' · ');
-        d.appendChild(dl);
+      if (t.deltaBox && t.deltaBox.length) {
+        var box = document.createElement('div'); box.className = 'kpi-delta-box';
+        t.deltaBox.forEach(function (txt) {
+          var row = document.createElement('div'); row.className = 'kpi-delta-row'; row.textContent = txt;
+          box.appendChild(row);
+        });
+        d.appendChild(box);
       }
       wrap.appendChild(d);
     });
@@ -2471,9 +2694,9 @@
     });
     var dotacion = conDatos.map(function (m) { return personalAlFinDeMesGlobal(anio, m); });
     var series = [
-      { name: 'Altas', color: cssVar('--status-good'), values: altas },
-      { name: 'Bajas', color: cssVar('--status-critical'), values: bajas },
-      { name: 'Dotación', color: cssVar('--ivc-turquesa'), values: dotacion }
+      { name: 'Altas', color: cssVar('--sld-sage'), values: altas },
+      { name: 'Bajas', color: cssVar('--sld-blue'), values: bajas },
+      { name: 'Dotación', color: cssVar('--sld-slate'), values: dotacion }
     ];
     renderLineChart(document.getElementById('chartAltasBajas'), cats, series, { valueFormatter: formatNum, endLabels: false, strokeWidth: 3 });
     renderSimpleTable(document.getElementById('chartAltasBajas-table'), ['Mes', 'Altas', 'Bajas', 'Dotación'],
@@ -2489,32 +2712,33 @@
     if (!rows.length) return emptyState(document.getElementById('chartCostoMensual'));
     var cats = rows.map(function (r) { return MESES_CORTO[r.mesIdx]; });
     var series = [
-      { name: 'Total Transferido Sueldos', color: cssVar('--ivc-series-1'), values: rows.map(function (r) { return r.transferido; }) },
-      { name: 'DDJJ F931', color: cssVar('--ivc-series-2'), values: rows.map(function (r) { return r.f931; }) },
-      { name: 'UOCRA', color: cssVar('--ivc-series-3'), values: rows.map(function (r) { return r.uocra; }) },
-      { name: 'IERIC', color: cssVar('--ivc-series-4'), values: rows.map(function (r) { return r.ieric; }) },
-      { name: 'FODECO', color: cssVar('--ivc-series-5'), values: rows.map(function (r) { return r.fodeco; }) }
+      { name: 'Erogación sin contribuciones', color: cssVar('--sld-blue-light'), values: rows.map(function (r) { return r.transferido; }) },
+      { name: 'DDJJ F931', color: cssVar('--sld-navy'), values: rows.map(function (r) { return r.f931; }) },
+      { name: 'UOCRA', color: cssVar('--sld-sage'), values: rows.map(function (r) { return r.uocra; }) },
+      { name: 'IERIC', color: cssVar('--sld-pine'), values: rows.map(function (r) { return r.ieric; }) },
+      { name: 'FODECO', color: cssVar('--sld-blue'), values: rows.map(function (r) { return r.fodeco; }) }
     ];
     var emphasisIdx = emphasisIndexFor(rows.map(function (r) { return r.mesIdx; }));
     renderBarChart(document.getElementById('chartCostoMensual'), cats, series, {
       height: 340, stacked: true, stackTotals: true,
       valueFormatter: formatCompact, tooltipFormatter: formatMoney, emphasisIndex: emphasisIdx
     });
-    var cols = ['Mes', 'Total Transferido Sueldos', 'DDJJ F931', 'UOCRA', 'IERIC', 'FODECO', 'Total mov. sueldos'];
+    var cols = ['Mes', 'Erogación sin contribuciones', 'DDJJ F931', 'UOCRA', 'IERIC', 'FODECO', 'Total mov. sueldos'];
     var trows = rows.map(function (r, i) {
       return [cats[i], formatMoney(r.transferido), formatMoney(r.f931), formatMoney(r.uocra), formatMoney(r.ieric), formatMoney(r.fodeco), formatMoney(r.total)];
     });
     renderSimpleTable(document.getElementById('chartCostoMensual-table'), cols, trows);
   }
 
-  // Los filtros de Mes por sección no reducen los gráficos "por mes" (perderían
-  // el sentido de tendencia): en cambio resaltan esa columna y atenúan el resto.
+  // El filtro de Mes de la hoja Sueldos no reduce los gráficos "por mes"
+  // (perderían el sentido de tendencia): en cambio resalta esa columna y
+  // atenúa el resto.
   function emphasisIndexForValue(mesIdxArray, mesSeleccionado) {
     if (mesSeleccionado === 'todos') return null;
     var idx = mesIdxArray.indexOf(Number(mesSeleccionado));
     return idx === -1 ? null : idx;
   }
-  function emphasisIndexFor(mesIdxArray) { return emphasisIndexForValue(mesIdxArray, state.mesCosto); }
+  function emphasisIndexFor(mesIdxArray) { return emphasisIndexForValue(mesIdxArray, state.mes); }
 
   function renderErogacionMensual() {
     var rows = RAW.erogacion.filter(function (r) { return r.anio === anioOperativo; });
@@ -2523,7 +2747,7 @@
     var meses = Object.keys(porMes).map(Number).sort(function (a, b) { return a - b; });
     if (!meses.length) return emptyState(document.getElementById('chartErogacionMensual'));
     var cats = meses.map(function (m) { return MESES_CORTO[m]; });
-    var series = [{ name: 'Erogación', color: cssVar('--ivc-turquesa'), values: meses.map(function (m) { return porMes[m]; }) }];
+    var series = [{ name: 'Erogación', color: cssVar('--sld-teal'), values: meses.map(function (m) { return porMes[m]; }) }];
     renderBarChart(document.getElementById('chartErogacionMensual'), cats, series, { valueFormatter: formatCompact, tooltipFormatter: formatMoney, emphasisIndex: emphasisIndexFor(meses) });
   }
 
@@ -2537,8 +2761,8 @@
       return f ? f.valor : 0;
     }
     var series = [
-      { name: 'Q1', color: cssVar('--ivc-verde-apagado'), values: meses.map(function (m) { return valorQ(m, 'Q1'); }) },
-      { name: 'Q2', color: cssVar('--ivc-turquesa'), values: meses.map(function (m) { return valorQ(m, 'Q2'); }) }
+      { name: 'Q1', color: cssVar('--sld-blue-light'), values: meses.map(function (m) { return valorQ(m, 'Q1'); }) },
+      { name: 'Q2', color: cssVar('--sld-navy'), values: meses.map(function (m) { return valorQ(m, 'Q2'); }) }
     ];
     renderBarChart(document.getElementById('chartErogacionQuincenal'), cats, series, { valueFormatter: formatCompact, tooltipFormatter: formatMoney, emphasisIndex: emphasisIndexFor(meses) });
   }
@@ -2547,7 +2771,7 @@
   function horasFiltradasCompleto() {
     return RAW.horas.filter(function (r) {
       if (r.anio !== anioOperativo) return false;
-      if (state.horasMes !== 'todos' && r.mesIdx !== Number(state.horasMes)) return false;
+      if (state.mes !== 'todos' && r.mesIdx !== Number(state.mes)) return false;
       if (state.horasQuincena !== 'todas' && r.acuerdo !== state.horasQuincena) return false;
       return true;
     });
@@ -2592,11 +2816,11 @@
     var cats = meses.map(function (m) { return MESES_CORTO[m]; });
     function sumaMes(m, campo) { return rows.filter(function (r) { return r.mesIdx === m; }).reduce(function (a, r) { return a + r[campo]; }, 0); }
     var series = [
-      { name: 'Normales', color: cssVar('--ivc-turquesa'), values: meses.map(function (m) { return sumaMes(m, 'normales'); }) },
-      { name: 'Al 50%', color: cssVar('--ivc-verde-apagado'), values: meses.map(function (m) { return sumaMes(m, 'h50'); }) },
-      { name: 'Al 100%', color: cssVar('--ivc-azul-muy-oscuro'), values: meses.map(function (m) { return sumaMes(m, 'h100'); }) }
+      { name: 'Normales', color: cssVar('--sld-teal'), values: meses.map(function (m) { return sumaMes(m, 'normales'); }) },
+      { name: 'Al 50%', color: cssVar('--sld-sage'), values: meses.map(function (m) { return sumaMes(m, 'h50'); }) },
+      { name: 'Al 100%', color: cssVar('--sld-navy'), values: meses.map(function (m) { return sumaMes(m, 'h100'); }) }
     ];
-    var emphasisIdx = emphasisIndexForValue(meses, state.horasMes);
+    var emphasisIdx = emphasisIndexForValue(meses, state.mes);
     renderBarChart(document.getElementById('chartHorasMes'), cats, series, { stacked: true, valueFormatter: formatNum, tooltipFormatter: formatNum, emphasisIndex: emphasisIdx });
     var trows = meses.map(function (m, i) {
       return [cats[i], formatNum(sumaMes(m, 'normales')), formatNum(sumaMes(m, 'h50')), formatNum(sumaMes(m, 'h100'))];
@@ -2610,7 +2834,7 @@
       var total = rows.filter(function (r) { return r.categoria === cat; }).reduce(function (a, r) { return a + r.total; }, 0);
       return { label: cat, value: total, color: catColorHex(cat), opacity: emphasisOpacity(cat) };
     }).filter(function (i) { return i.value > 0; });
-    renderHorizontalBar(document.getElementById('chartHorasCategoria'), items, { valueFormatter: formatNum, valueLabel: 'Horas' });
+    renderHorizontalBar(document.getElementById('chartHorasCategoria'), items, { valueFormatter: formatNum, valueLabel: 'Horas', rowHeight: 46, barThickness: 0.7 });
   }
 
   var sortHoras = { col: 'total', dir: -1 };
@@ -2670,24 +2894,108 @@
     container.appendChild(table);
   }
 
+  // Los dos "grupos" de la Variación del Valor de la Hora: Precio Hora Básico
+  // UOCRA (línea sólida) y Bruto de IVC (línea punteada) — cada uno aporta
+  // hasta 4 líneas (una por categoría, mismo color fijo que en el resto del
+  // tablero). Una casilla por grupo prende/apaga sus 4 líneas juntas.
+  var GRUPOS_PRECIO = [
+    { key: 'basico', campo: 'basico', label: 'UOCRA', dash: false },
+    { key: 'bruto', campo: 'bruto', label: 'IVC', dash: true }
+  ];
+
   function renderPrecios() {
-    var campo = state.precioTab === 'bruto' ? 'bruto' : 'basico';
-    var rows = RAW.precios.filter(function (r) { return r.anio === anioOperativo && r[campo] !== null; });
+    if (!state.precioGrupos) state.precioGrupos = { basico: true, bruto: true };
+
+    var wrapLegend = document.getElementById('legendPrecios');
+    if (wrapLegend) {
+      wrapLegend.innerHTML = '';
+      var swColor = cssVar('--sld-navy');
+      GRUPOS_PRECIO.forEach(function (g) {
+        var item = document.createElement('label');
+        item.className = 'legend-check-item' + (state.precioGrupos[g.key] ? '' : ' off');
+        var chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.checked = state.precioGrupos[g.key];
+        chk.addEventListener('change', function () {
+          state.precioGrupos[g.key] = chk.checked;
+          renderPrecios();
+        });
+        var sw = document.createElement('span');
+        sw.className = 'legend-swatch line' + (g.dash ? ' dashed' : '');
+        sw.style.background = g.dash
+          ? 'repeating-linear-gradient(to right, ' + swColor + ' 0, ' + swColor + ' 4px, transparent 4px, transparent 7px)'
+          : swColor;
+        var txt = document.createElement('span');
+        txt.textContent = g.label;
+        item.appendChild(chk); item.appendChild(sw); item.appendChild(txt);
+        wrapLegend.appendChild(item);
+      });
+    }
+
+    var rows = RAW.precios.filter(function (r) { return r.anio === anioOperativo; });
     var meses = Array.from(new Set(rows.map(function (r) { return r.mesIdx; }))).sort(function (a, b) { return a - b; });
     if (!meses.length) return emptyState(document.getElementById('chartPrecios'));
     var cats = meses.map(function (m) { return MESES_CORTO[m]; });
-    var series = CATEGORIAS_ORDEN.map(function (cat) {
-      var values = meses.map(function (m) {
-        var f = rows.find(function (r) { return r.mesIdx === m && r.categoria === cat; });
-        return f ? f[campo] : null;
+
+    var series = [];
+    GRUPOS_PRECIO.forEach(function (g) {
+      if (!state.precioGrupos[g.key]) return;
+      CATEGORIAS_ORDEN.forEach(function (cat) {
+        var values = meses.map(function (m) {
+          var f = rows.find(function (r) { return r.mesIdx === m && r.categoria === cat; });
+          return (f && f[g.campo] !== null && f[g.campo] !== undefined) ? f[g.campo] : null;
+        });
+        if (!values.some(function (v) { return v !== null; })) return;
+        series.push({ name: cat + ' (' + g.label + ')', color: catColorHex(cat), dash: g.dash, values: values, opacity: emphasisOpacity(cat) });
       });
-      return { name: cat, color: catColorHex(cat), values: values, opacity: emphasisOpacity(cat) };
-    }).filter(function (s) { return s.values.some(function (v) { return v !== null; }); });
+    });
+
+    if (!series.length) return emptyState(document.getElementById('chartPrecios'), 'Destildaste todos los grupos — no hay nada para mostrar.');
+
     renderLineChart(document.getElementById('chartPrecios'), cats, series, { valueFormatter: formatMoney, endLabels: false });
 
-    var tcols = ['Categoría'].concat(cats);
+    var tcols = ['Categoría (grupo)'].concat(cats);
     var trows = series.map(function (s) { return [s.name].concat(s.values.map(function (v) { return v === null ? '—' : formatMoney(v); })); });
     renderSimpleTable(document.getElementById('chartPrecios-table'), tcols, trows);
+  }
+
+  // Costo real por hora = Costo Total del Mes (Sueldos + Aportes + Contribuciones)
+  // dividido por las Horas Totales Trabajadas de ese mismo mes. A diferencia de
+  // renderPrecios() (que muestra el valor de convenio por categoría), esto es un
+  // promedio único de toda la nómina, con antigüedad/adicionales/horas extra ya
+  // incluidos en el costo.
+  // Promedio simple del Precio Hora Básico UOCRA entre las categorías con
+  // precio cargado en ese mes puntual (no arrastra el último valor conocido
+  // como precioAFinDeMes — acá interesa comparar mes a mes contra lo real).
+  function costoTeoricoPromedioMes(mesIdx) {
+    var vals = RAW.precios.filter(function (r) {
+      return r.anio === anioOperativo && r.mesIdx === mesIdx && r.basico !== null;
+    }).map(function (r) { return r.basico; });
+    if (!vals.length) return null;
+    return vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
+  }
+
+  function renderCostoRealPorHora() {
+    var rows = RAW.costoMensual
+      .filter(function (r) { return r.anio === anioOperativo; })
+      .sort(function (a, b) { return a.mesIdx - b.mesIdx; });
+    var puntos = rows.map(function (r) {
+      var horas = horasTotalMes(r.mesIdx);
+      return { mesIdx: r.mesIdx, costoHora: horas > 0 ? (r.total / horas) : null };
+    }).filter(function (p) { return p.costoHora !== null; });
+    if (!puntos.length) return emptyState(document.getElementById('chartCostoRealHora'));
+    var cats = puntos.map(function (p) { return MESES_CORTO[p.mesIdx]; });
+    var teorico = puntos.map(function (p) { return costoTeoricoPromedioMes(p.mesIdx); });
+    var series = [
+      { name: 'Costo Real por Hora (promedio)', color: cssVar('--sld-pine'), dash: true, values: puntos.map(function (p) { return p.costoHora; }) },
+      { name: 'Costo Teórico UOCRA (promedio)', color: cssVar('--sld-blue-light'), values: teorico }
+    ];
+    renderLineChart(document.getElementById('chartCostoRealHora'), cats, series, { valueFormatter: formatMoney, endLabels: false });
+
+    var trows = puntos.map(function (p, i) {
+      return [cats[i], formatMoney(p.costoHora), teorico[i] === null ? '—' : formatMoney(teorico[i])];
+    });
+    renderSimpleTable(document.getElementById('chartCostoRealHora-table'), ['Mes', 'Costo Real por Hora', 'Costo Teórico UOCRA (promedio)'], trows);
   }
 
   // ============================================================
