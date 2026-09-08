@@ -1,0 +1,3515 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IVC — Gestión de Sueldos</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ivc-azul-oscuro: #113F4C;
+    --ivc-azul-grisaceo: #19414C;
+    --ivc-verde-apagado: #2F6662;
+    --ivc-turquesa: #008175;
+    --ivc-azul-muy-oscuro: #002633;
+
+    --surface-1: #ffffff;
+    --surface-2: #f6f8f8;
+    --page-plane: #eef2f2;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --gridline: #e6e6e2;
+    --baseline: #c3c2b7;
+    --border: rgba(11,11,11,0.10);
+
+    --series-1: #2a78d6; /* azul */
+    --series-2: #eb6834; /* naranja */
+    --series-3: #1baf7a; /* aqua */
+    --series-4: #eda100; /* amarillo */
+    --series-5: #e87ba4; /* magenta */
+    --series-6: #008300; /* verde */
+    --series-7: #4a3aa7; /* violeta */
+    --series-8: #e34948; /* rojo */
+
+    --seq-300: #6da7ec;
+    --seq-450: #2a78d6;
+    --seq-600: #184f95;
+
+    /* Paleta de marca IVC — usada en las barras de los gráficos (categorías, costos). */
+    --ivc-series-1: #008175; /* verde turquesa */
+    --ivc-series-2: #113F4C; /* azul petróleo oscuro */
+    --ivc-series-3: #2F6662; /* verde petróleo apagado */
+    --ivc-series-4: #19414C; /* azul grisáceo oscuro */
+    --ivc-series-5: #002633; /* azul muy oscuro */
+
+    /* Excepción: Altas y Bajas usa rojo/verde de estado, no la paleta de marca. */
+    --status-good: #0ca30c;
+    --status-critical: #d03b3b;
+
+    /* Paleta nueva (2026-09), sólo para los gráficos de la pestaña Sueldos —
+       las --ivc-series-N, --ivc-turquesa e --ivc-azul-oscuro de arriba siguen
+       tal cual para el resto de la UI (pestañas, botones, textos) y para los
+       demás módulos (Compras/Costos/Ventas/Productividad), que no cambian. */
+    --sld-navy: #0A3540;
+    --sld-teal: #1B6E7A;
+    --sld-blue: #3B8EA5;
+    --sld-blue-light: #8FBCC3;
+    --sld-slate: #5F7481;
+    --sld-sage: #7A9E7E;
+    --sld-olive: #4C7A47;
+    --sld-pine: #2E634B;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--page-plane);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  header.app-header {
+    background: var(--surface-1);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 21;
+  }
+  header.app-header img { height: 38px; display: block; }
+  header.app-header .titles h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--ivc-azul-oscuro);
+    letter-spacing: 0.2px;
+  }
+  header.app-header .titles p {
+    margin: 2px 0 0;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+  }
+  header .status {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: right;
+    line-height: 1.5;
+  }
+  header .status .dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    background: #0ca30c; margin-right: 5px;
+  }
+  header .status.error .dot { background: #d03b3b; }
+
+  nav.module-tabs {
+    background: var(--surface-1);
+    border-bottom: 3px solid var(--ivc-azul-muy-oscuro);
+    padding: 0 24px;
+    display: flex;
+    gap: 4px;
+    position: sticky;
+    z-index: 20;
+  }
+  nav.module-tabs .module-tab {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -3px;
+    padding: 12px 14px 10px;
+    cursor: pointer;
+  }
+  nav.module-tabs .module-tab:hover { color: var(--ivc-azul-oscuro); }
+  nav.module-tabs .module-tab.active {
+    color: var(--ivc-turquesa);
+    border-bottom-color: var(--ivc-turquesa);
+  }
+
+  .modulo-panel.hidden { display: none; }
+  .modulo-placeholder {
+    max-width: 1180px; margin: 0 auto; padding: 90px 24px;
+    text-align: center;
+  }
+  .modulo-placeholder .construction-box {
+    display: inline-block; padding: 34px 46px; border: 1px dashed var(--baseline);
+    border-radius: 12px; background: var(--surface-1);
+  }
+  .modulo-placeholder h2 {
+    margin: 0 0 6px; font-size: 20px; color: var(--ivc-azul-oscuro); text-transform: none;
+    border: none; padding: 0;
+  }
+  .modulo-placeholder p { margin: 0; font-size: 13.5px; color: var(--text-muted); }
+
+  .filters {
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 66px;
+    z-index: 19;
+  }
+  .filters label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .filters select {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--baseline);
+    background: var(--surface-1);
+    color: var(--text-primary);
+  }
+  .filters-title {
+    font-size: 12.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--ivc-azul-oscuro);
+  }
+  .periodo-label {
+    margin-left: auto;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--ivc-turquesa);
+    white-space: nowrap;
+  }
+
+  main { max-width: 1180px; margin: 0 auto; padding: 22px 24px 60px; }
+
+  section.block { margin-bottom: 34px; }
+  section.block h2 {
+    font-size: 17px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--ivc-azul-oscuro);
+    border-bottom: 2px solid var(--ivc-turquesa);
+    padding-bottom: 8px;
+    margin: 0 0 16px;
+  }
+
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .kpi-row.cols-4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 900px) {
+    .kpi-row.cols-4 { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 480px) {
+    .kpi-row.cols-4 { grid-template-columns: 1fr; }
+  }
+  .kpi-tile {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  /* Jerarquía de tamaños en las tarjetas de Resumen General (Sueldos): Título
+     + Valor + Mes-Año (el trío "principal") apenas más grandes que el Detalle
+     y que el texto dentro de la caja de comparación — a propósito sutil, no
+     un contraste fuerte. */
+  .kpi-tile .label { font-size: 12.5px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; }
+
+  /* Ícono de información (símbolo estándar "info" de Material Icons/Google)
+     al lado del título de un KPI — hover o click muestran una burbuja con la
+     aclaración del indicador. Sólo se agrega en las tarjetas que lo
+     necesitan (t.info en renderKpis). Se dibuja como SVG (no como carácter
+     de texto: el glyph Unicode "ⓘ" se renderiza mal —solo el círculo, casi
+     sin la "i"— en varias fuentes/sistemas) para que se vea siempre completo
+     y nítido a cualquier tamaño. */
+  .kpi-info { position: relative; display: inline-flex; align-items: center; }
+  .kpi-info-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px; height: 14px; color: var(--text-muted);
+    cursor: pointer; user-select: none; flex: none;
+  }
+  .kpi-info-icon svg { display: block; width: 100%; height: 100%; }
+  .kpi-info-icon:hover { color: var(--ivc-azul-oscuro); }
+  .kpi-info-bubble {
+    display: none;
+    position: absolute; z-index: 20; bottom: calc(100% + 6px); left: 50%;
+    transform: translateX(-50%);
+    width: 220px; max-width: 60vw;
+    background: var(--ivc-azul-oscuro); color: #fff;
+    font-size: 11px; font-weight: 400; line-height: 1.4;
+    padding: 8px 10px; border-radius: 7px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    white-space: normal;
+  }
+  .kpi-info:hover .kpi-info-bubble, .kpi-info.open .kpi-info-bubble { display: block; }
+  .kpi-tile .value {
+    font-size: 28px; font-weight: 600; color: var(--ivc-azul-oscuro);
+    margin-top: 4px; font-variant-numeric: proportional-nums;
+  }
+  .kpi-tile .value.text-value { font-size: 18px; line-height: 1.3; white-space: normal; }
+  .kpi-tile .sub { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; line-height: 1.25; }
+  .kpi-tile .periodo { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+  .kpi-tile .deltas { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+  .kpi-tile .deltas span { white-space: nowrap; }
+
+  /* Caja de comparación con el mes anterior/Febrero — solo para los KPIs de
+     Resumen General (hoja Sueldos) que tienen esa comparación. Tonos azules
+     a propósito, para distinguirla del resto del texto (gris) de la tarjeta. */
+  .kpi-tile .kpi-delta-box {
+    margin-top: 8px;
+    padding: 6px 9px;
+    border-radius: 7px;
+    background: rgba(31, 95, 168, 0.08);
+    border: 1.5px solid rgba(31, 95, 168, 0.4);
+  }
+  .kpi-tile .kpi-delta-row {
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: #1f5fa8;
+    font-weight: 600;
+  }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 14px; }
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px 12px;
+    /* Grid estira todas las cards de una fila a la altura de la más alta
+       (ej. una tarjeta con gráfico de barras corto junto a una con gráfico de
+       líneas más alto). Sin esto, el contenido quedaba pegado arriba y el
+       espacio de sobra caía como un bloque vacío debajo. */
+    display: flex; flex-direction: column;
+  }
+  .card.full { grid-column: 1 / -1; }
+  .card .card-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 4px;
+  }
+  .card h3 { margin: 0; font-size: 15.5px; font-weight: 600; color: var(--text-primary); }
+  .card .caption { font-size: 11.5px; color: var(--text-muted); margin: 2px 0 8px; }
+  .card .toolbar { display: flex; gap: 6px; align-items: center; }
+  .btn-ghost {
+    font-size: 11px; color: var(--ivc-azul-oscuro); background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; cursor: pointer;
+  }
+  .btn-ghost.active { background: var(--ivc-turquesa); color: #fff; border-color: var(--ivc-turquesa); }
+  .chart-holder { width: 100%; }
+  /* Sólo el chart-holder que cuelga directo de .card (no el anidado dentro de
+     .pie-card-body, que ya se centra por su cuenta): ocupa el espacio
+     sobrante de la tarjeta y centra verticalmente el gráfico dentro de él.
+     Columna (no fila): algunos chart-holder tienen 2 hijos apilados (la
+     leyenda que arma renderLineChart() arriba del <svg>, o el
+     legend-check-row de checkboxes) — con flex-direction por defecto (row)
+     esos dos terminaban lado a lado en vez de uno arriba del otro. */
+  .card > .chart-holder { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
+  .chart-holder svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .table-wrap { display: none; }
+  .table-wrap.visible { display: block; }
+  .chart-holder.hidden { display: none; }
+
+  svg text { fill: var(--text-secondary); font-size: 11px; font-family: inherit; }
+  svg .axis-line { stroke: var(--baseline); stroke-width: 1; }
+  svg .grid-line { stroke: var(--gridline); stroke-width: 1; }
+  svg .end-label { fill: var(--text-primary); font-size: 11px; font-weight: 600; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 6px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--text-secondary); cursor: default; }
+  .legend-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .legend-swatch.line { width: 14px; height: 2px; border-radius: 1px; }
+  .legend-swatch.hollow { background: transparent !important; border: 1.5px dashed; box-sizing: border-box; }
+  .legend-check-row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 2px 0 12px; }
+  .legend-check-item {
+    display: flex; align-items: center; gap: 6px; font-size: 12px;
+    color: var(--text-secondary); cursor: pointer; user-select: none;
+  }
+  .legend-check-item input[type="checkbox"] { margin: 0; cursor: pointer; accent-color: var(--ivc-turquesa); }
+  .legend-check-item .legend-swatch { flex-shrink: 0; }
+  .legend-check-item .monto { color: var(--text-muted); }
+  .legend-check-item.off { opacity: 0.45; text-decoration: line-through; }
+
+  .pie-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .pie-card-body { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .pie-card-body .chart-holder { max-width: 208px; }
+  .pie-legend { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 2px; }
+  .pie-legend-item { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-secondary); }
+  .pie-legend-item .legend-swatch { flex-shrink: 0; }
+  .pie-legend-item .pie-legend-label { flex: 1; }
+  .pie-legend-item .pie-legend-value { color: var(--text-muted); white-space: nowrap; }
+  .pie-legend-item .pie-legend-pct { font-weight: 600; color: var(--text-primary); white-space: nowrap; min-width: 32px; text-align: right; }
+
+  #tooltip {
+    position: fixed; display: none; z-index: 100; pointer-events: none;
+    background: var(--ivc-azul-muy-oscuro); color: #fff; border-radius: 8px;
+    padding: 8px 10px; font-size: 11.5px; box-shadow: 0 6px 18px rgba(0,0,0,0.22);
+    max-width: 260px;
+  }
+  #tooltip .tt-title { font-weight: 700; margin-bottom: 4px; }
+  #tooltip .tt-row { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  #tooltip .tt-key { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+  #tooltip .tt-name { color: #d7e2e4; margin-right: 8px; }
+  #tooltip .tt-value { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.data-table th, table.data-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--gridline); }
+  table.data-table th { color: var(--text-secondary); font-weight: 600; cursor: pointer; user-select: none; white-space: nowrap; }
+  table.data-table th.sorted::after { content: " ▾"; font-size: 9px; }
+  table.data-table td.num, table.data-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .search-box {
+    font-family: inherit; font-size: 12.5px; padding: 5px 8px; border-radius: 6px;
+    border: 1px solid var(--baseline); width: 220px;
+  }
+  .scroll-table { max-height: 360px; overflow-y: auto; border-top: 1px solid var(--gridline); margin-top: 6px; }
+
+  .empty-note { font-size: 12px; color: var(--text-muted); padding: 20px 4px; text-align: center; }
+
+  footer.app-footer {
+    max-width: 1180px; margin: 0 auto; padding: 10px 24px 40px; color: var(--text-muted); font-size: 11.5px;
+  }
+
+  @media (max-width: 640px) {
+    .filters { top: 60px; }
+    .kpi-tile .value { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAS4AAABZCAYAAAH3F/kYAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyJpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNiAoV2luZG93cykiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6QjEzOTJCMjg1OTgxMTFFNkFFRkM4MkY0ODQ3ODkyOUIiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6QjEzOTJCMjk1OTgxMTFFNkFFRkM4MkY0ODQ3ODkyOUIiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDpCMTM5MkIyNjU5ODExMUU2QUVGQzgyRjQ4NDc4OTI5QiIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDpCMTM5MkIyNzU5ODExMUU2QUVGQzgyRjQ4NDc4OTI5QiIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PqsxIzkAADuRSURBVHjaYpR09GHA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" alt="IVC — Premoldeados de Hormigón">
+  <div class="titles">
+    <h1>Tablero de Gestión</h1>
+    <p>IVC Premoldeados de Hormigón</p>
+  </div>
+  <div class="status" id="statusBox"><span class="dot"></span>Cargando datos…</div>
+</header>
+
+<nav class="module-tabs" id="moduleTabs">
+  <button type="button" class="module-tab active" data-modulo="sueldos">Sueldos</button>
+  <button type="button" class="module-tab" data-modulo="compras">Compras</button>
+  <button type="button" class="module-tab" data-modulo="costos">Costos</button>
+  <button type="button" class="module-tab" data-modulo="ventas">Ventas</button>
+  <button type="button" class="module-tab" data-modulo="productividad">Productividad</button>
+</nav>
+
+<div id="moduloSueldos" class="modulo-panel">
+
+<div class="filters">
+  <span class="filters-title">Filtros</span>
+  <label>Categoría
+    <select id="filtroCategoria"><option value="Todas">Todas</option></select>
+  </label>
+  <label>Mes
+    <select id="filtroMesSueldos"><option value="todos">Todos los meses</option></select>
+  </label>
+  <button type="button" class="btn-ghost" id="btnLimpiarFiltrosCategoria">Limpiar filtros</button>
+  <span class="periodo-label" id="periodoSeleccionadoLabel">Período seleccionado: —</span>
+</div>
+
+<main>
+
+  <section class="block">
+    <h2>Resumen General</h2>
+    <div class="kpi-row cols-4" id="kpiRow"></div>
+  </section>
+
+  <section class="block">
+    <h2>Dotación y Rotación</h2>
+    <div class="cards">
+      <div class="card">
+        <div class="card-head"><h3>Personal Activo por Categoría</h3></div>
+        <p class="caption">Nómina vigente hoy, agrupada por categoría salarial.</p>
+        <div class="chart-holder" id="chartDotacionCategoria"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Evolución de Altas y Bajas</h3>
+          <div class="toolbar">
+            <label style="font-size:12px; color:var(--text-secondary); display:flex; align-items:center; gap:6px;">Año
+              <select id="filtroAnioAltasBajas" class="btn-ghost" style="cursor:pointer;"></select>
+            </label>
+            <button class="btn-ghost" data-toggle-table="chartAltasBajas">Ver tabla</button>
+          </div>
+        </div>
+        <p class="caption">Personas que ingresaron vs. se desvincularon por mes, y la dotación resultante al cierre de cada mes. Este gráfico tiene su propio filtro de año porque incluye fechas de ingreso de gente activa desde antes de 2026.</p>
+        <div class="chart-holder" id="chartAltasBajas"></div>
+        <div class="table-wrap" id="chartAltasBajas-table"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>Costos Totales</h2>
+    <div class="cards">
+      <div class="card full">
+        <div class="card-head">
+          <h3>Movimientos de Sueldos</h3>
+          <div class="toolbar"><button class="btn-ghost" data-toggle-table="chartCostoMensual">Ver tabla</button></div>
+        </div>
+        <p class="caption">La altura total de cada columna corresponde al costo total en sueldos + aportes + contribuciones del mes.</p>
+        <div class="chart-holder" id="chartCostoMensual"></div>
+        <div class="table-wrap" id="chartCostoMensual-table"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Erogación Mensual (sin Contribuciones)</h3></div>
+        <div class="chart-holder" id="chartErogacionMensual"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Erogación por Quincena</h3></div>
+        <p class="caption">Q1 vs. Q2 de cada mes.</p>
+        <div class="chart-holder" id="chartErogacionQuincenal"></div>
+      </div>
+      <div class="card full">
+        <div class="card-head">
+          <h3>Variación del Valor de la Hora por Categoría</h3>
+          <div class="toolbar"><button class="btn-ghost" data-toggle-table="chartPrecios">Ver tabla</button></div>
+        </div>
+        <p class="caption">Una línea sólida por categoría con el Precio Hora Básico UOCRA (valor de convenio) y una línea punteada por categoría con el Precio real pagado por IVC. Destildá un grupo para ocultar sus 4 líneas.</p>
+        <div class="legend-check-row" id="legendPrecios"></div>
+        <div class="chart-holder" id="chartPrecios"></div>
+        <div class="table-wrap" id="chartPrecios-table"></div>
+      </div>
+      <div class="card full">
+        <div class="card-head">
+          <h3>Costo Real por Hora</h3>
+          <div class="toolbar"><button class="btn-ghost" data-toggle-table="chartCostoRealHora">Ver tabla</button></div>
+        </div>
+        <p class="caption">Costo Total del Mes (Sueldos) ÷ Horas Totales Trabajadas de ese mes — a diferencia del gráfico de arriba, que muestra el valor de convenio por categoría, este es el costo real y promedio que termina saliendo cada hora pagada, con antigüedad, adicionales y horas extra ya adentro. Se compara contra el Costo Teórico UOCRA promedio (el promedio simple del Precio Hora Básico UOCRA entre las categorías con precio cargado ese mes).</p>
+        <div class="chart-holder" id="chartCostoRealHora"></div>
+        <div class="table-wrap" id="chartCostoRealHora-table"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>Horas y Adicionales</h2>
+    <div class="filters" style="padding:10px 16px; border:none; position:static; margin-bottom:14px;">
+      <label>Quincena
+        <select id="filtroHorasQuincena">
+          <option value="todas">Todas</option>
+          <option value="Q1">Q1</option>
+          <option value="Q2">Q2</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="kpi-row" id="kpiHorasRow" style="margin-bottom:14px;"></div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-head">
+          <h3>Horas por Mes (Normales / 50% / 100%)</h3>
+          <div class="toolbar"><button class="btn-ghost" data-toggle-table="chartHorasMes">Ver tabla</button></div>
+        </div>
+        <p class="caption">Total de horas trabajadas por mes, desglosadas por tipo. El mes elegido arriba queda resaltado.</p>
+        <div class="chart-holder" id="chartHorasMes"></div>
+        <div class="table-wrap" id="chartHorasMes-table"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Horas por Categoría</h3></div>
+        <p class="caption">Total de horas trabajadas en el período filtrado, por categoría.</p>
+        <div class="chart-holder" id="chartHorasCategoria"></div>
+      </div>
+      <div class="card full">
+        <div class="card-head">
+          <h3>Horas por Persona</h3>
+          <input class="search-box" id="buscarPersona" type="text" placeholder="Buscar persona…">
+        </div>
+        <p class="caption">Según los filtros de Mes, Quincena y Categoría. Hacé clic en un encabezado para ordenar.</p>
+        <div class="scroll-table" id="tablaHorasPersona"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="app-footer">
+  Datos desde Google Sheets vía Apps Script — se actualizan solos, sin tocar este archivo. Última carga: <span id="footerTimestamp">—</span>.
+</footer>
+
+</div>
+
+<div id="moduloVentas" class="modulo-panel hidden">
+
+<main>
+
+  <section class="block">
+    <h2>Ventas — Conexión de Datos</h2>
+    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Los indicadores y gráficos de Ventas todavía no están armados — eso viene en el próximo paso. Por ahora este panel solo confirma que las dos fuentes (Registro de Remitos y Registro de Facturas Ventas) se están leyendo bien. <span id="ventasConexionMsg">Conectando…</span></p>
+    <div class="kpi-row" id="kpiRowVentasConexion"></div>
+  </section>
+
+  <section class="block">
+    <h2>Análisis de Productos Vendidos</h2>
+    <div class="filters" style="padding:10px 16px; border:none; position:static; margin-bottom:14px; flex-wrap:wrap;">
+      <label>Año
+        <select id="filtroAnioVentas" class="btn-ghost" style="cursor:pointer;"></select>
+      </label>
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <span style="font-size:12px; color:var(--text-secondary);">Meses</span>
+        <button type="button" class="btn-ghost" id="btnMesesVentasTodos">Todos</button>
+        <div id="filtroMesesVentas" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+      </div>
+      <button type="button" class="btn-ghost" id="btnLimpiarFiltrosVentas">Limpiar filtros</button>
+    </div>
+    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Cantidad de unidades despachadas (Registro de Remitos), agrupadas por nivel de Tensión para Postes, más Crucetas, Ménsulas y Vínculos como familias propias — todo lo que no entra en ninguna de esas se agrupa en "Otros". Responde al filtro de Año y Meses de arriba; podés elegir uno o varios meses.</p>
+    <div class="cards">
+      <div class="card full">
+        <div class="card-head">
+          <h3>Unidades Vendidas por Categoría</h3>
+          <div class="toolbar"><button class="btn-ghost" data-toggle-table="chartProductosVentas">Ver tabla</button></div>
+        </div>
+        <div class="chart-holder" id="chartProductosVentas"></div>
+        <div class="table-wrap" id="chartProductosVentas-table"></div>
+      </div>
+      <div class="card full">
+        <div class="card-head">
+          <h3>Evolución Mensual por Familia</h3>
+          <div class="toolbar"><button class="btn-ghost" data-toggle-table="chartEvolucionVentas">Ver tabla</button></div>
+        </div>
+        <p class="caption">Elegí una familia de producto: si tiene niveles internos (Tensión para Postes; Simple/Doble/Triple para Crucetas, Ménsulas y Vínculos), la columna de cada mes se divide en esos niveles.</p>
+        <div class="toolbar" style="margin-bottom:10px; flex-wrap:wrap;">
+          <button class="btn-ghost active" data-familia-tab="postes">Postes</button>
+          <button class="btn-ghost" data-familia-tab="crucetas">Crucetas</button>
+          <button class="btn-ghost" data-familia-tab="mensulas">Ménsulas</button>
+          <button class="btn-ghost" data-familia-tab="vinculos">Vínculos</button>
+          <button class="btn-ghost" data-familia-tab="otros">Otros</button>
+        </div>
+        <div class="chart-holder" id="chartEvolucionVentas"></div>
+        <div class="table-wrap" id="chartEvolucionVentas-table"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="app-footer">
+  Datos desde Google Sheets vía Apps Script — se actualizan solos, sin tocar este archivo. Última carga: <span id="footerTimestampVentas">—</span>.
+</footer>
+
+</div>
+
+<div id="moduloCompras" class="modulo-panel hidden">
+
+<main>
+
+  <section class="block">
+    <h2>Resumen General</h2>
+    <div class="filters" style="padding:10px 16px; border:none; position:static; margin-bottom:14px;">
+      <label>Mes
+        <select id="filtroMesResumenCompras"><option value="todos">Todos (año completo)</option></select>
+      </label>
+      <button type="button" class="btn-ghost" id="btnLimpiarFiltrosResumenCompras">Limpiar filtros</button>
+    </div>
+    <div class="kpi-row cols-4" id="kpiRowCompras"></div>
+  </section>
+
+  <section class="block">
+    <h2>Distribución de Facturación</h2>
+    <p class="caption" style="padding:0 2px; margin:-2px 0 12px;">Participación de cada valor en el total facturado de <span id="anioTortasCompras">—</span>. Los valores con menor peso se agrupan en "Otros".</p>
+    <div class="pie-grid">
+      <div class="card">
+        <div class="card-head">
+          <h3>Facturas de Compra por Categoría</h3>
+          <button class="btn-ghost" data-toggle-table="pieCategoria">Ver tabla</button>
+        </div>
+        <div class="pie-card-body">
+          <div class="chart-holder" id="pieCategoria"></div>
+          <div class="pie-legend" id="pieCategoria-legend"></div>
+        </div>
+        <div class="table-wrap" id="pieCategoria-table"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Facturas de Compra por Subcategoría</h3>
+          <button class="btn-ghost" data-toggle-table="pieSubcategoria">Ver tabla</button>
+        </div>
+        <div class="pie-card-body">
+          <div class="chart-holder" id="pieSubcategoria"></div>
+          <div class="pie-legend" id="pieSubcategoria-legend"></div>
+        </div>
+        <div class="table-wrap" id="pieSubcategoria-table"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Facturas de Compra por Tipo de Ítem</h3>
+          <button class="btn-ghost" data-toggle-table="pieTipoItem">Ver tabla</button>
+        </div>
+        <div class="pie-card-body">
+          <div class="chart-holder" id="pieTipoItem"></div>
+          <div class="pie-legend" id="pieTipoItem-legend"></div>
+        </div>
+        <div class="table-wrap" id="pieTipoItem-table"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Facturas de Compra por Imputación de Gestión</h3>
+          <button class="btn-ghost" data-toggle-table="pieImputacion">Ver tabla</button>
+        </div>
+        <div class="pie-card-body">
+          <div class="chart-holder" id="pieImputacion"></div>
+          <div class="pie-legend" id="pieImputacion-legend"></div>
+        </div>
+        <div class="table-wrap" id="pieImputacion-table"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>Facturación por Mes</h2>
+    <div class="cards">
+      <div class="card full">
+        <div class="card-head">
+          <h3>Monto Facturado por Mes</h3>
+          <div class="toolbar">
+            <label style="font-size:12px; color:var(--text-secondary); display:flex; align-items:center; gap:6px;">Año
+              <select id="filtroAnioFacturas" class="btn-ghost" style="cursor:pointer;"></select>
+            </label>
+            <button class="btn-ghost" data-toggle-table="chartFacturasMes">Ver tabla</button>
+          </div>
+        </div>
+        <p class="caption">Suma del Total Facturación por mes. Los filtros de abajo se combinan entre sí — podés usar varios a la vez.</p>
+        <div class="filters" style="padding:6px 0 16px; border:none; position:static; margin-bottom:6px; background:transparent;">
+          <label>Categoría <select id="filtroCatFactura"></select></label>
+          <label>Categoría Macro <select id="filtroCatMacroFactura"></select></label>
+          <label>Tipo de Ítem <select id="filtroTipoItemFactura"></select></label>
+          <label>Imputación Gestión <select id="filtroImputacionFactura"></select></label>
+          <label>Flujo de Fondos <select id="filtroFlujoFactura"></select></label>
+          <label>Comportamiento del Costo <select id="filtroComportamientoFactura"></select></label>
+          <label>Área <select id="filtroAreaFactura"></select></label>
+          <button type="button" class="btn-ghost" id="btnLimpiarFiltrosFacturas">Limpiar filtros</button>
+        </div>
+        <div class="filters" style="padding:6px 0 4px; border:none; position:static; margin-bottom:2px; background:transparent;">
+          <label>Desglosar por
+            <select id="filtroDesgloseFactura"></select>
+          </label>
+        </div>
+        <p class="caption" style="margin-bottom:6px;">Destildá un valor para excluirlo del gráfico y del total — los colores se mantienen fijos por valor.</p>
+        <div class="legend-check-row" id="legendFacturasDesglose"></div>
+        <div class="chart-holder" id="chartFacturasMes"></div>
+        <div class="table-wrap" id="chartFacturasMes-table"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="app-footer">
+  Datos desde Google Sheets vía Apps Script — se actualizan solos, sin tocar este archivo. Última carga: <span id="footerTimestampCompras">—</span>.
+</footer>
+
+</div>
+
+<div id="moduloCostos" class="modulo-panel hidden">
+
+<main>
+
+  <section class="block">
+    <h2>Costo Total (Sueldos + Compras)</h2>
+    <div class="filters" style="padding:10px 16px; border:none; position:static; margin-bottom:14px;">
+      <label>Mes
+        <select id="filtroMesCostos"><option value="todos">Todos (año completo)</option></select>
+      </label>
+      <button type="button" class="btn-ghost" id="btnLimpiarFiltrosCostos">Limpiar filtros</button>
+    </div>
+    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Costo Total = costo de Sueldos (haberes + aportes y contribuciones) + Total Facturación de Compras. "Por día" usa días hábiles (lunes a viernes, sin descontar feriados); "por hora" usa las horas trabajadas cargadas en Sueldos.</p>
+    <div class="kpi-row" id="kpiRowCostosTotal"></div>
+  </section>
+
+  <section class="block">
+    <h2>Promedios del Año (Enero&nbsp;–&nbsp;<span id="mesPromedioCostosLabel">—</span>)</h2>
+    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Se calculan sobre la suma acumulada del período, no como promedio de los promedios mensuales — así un mes con menos días u horas no distorsiona el resultado.</p>
+    <div class="kpi-row" id="kpiRowCostosPromedio"></div>
+  </section>
+
+  <section class="block">
+    <h2>Composición del Costo Total</h2>
+    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Participación de Sueldos y de cada macrocategoría de Compras dentro del costo total de <span id="periodoComposicionCosto">—</span> — sigue el filtro de Mes de arriba. Las macrocategorías con menor peso se agrupan en "Otros".</p>
+    <div class="pie-grid">
+      <div class="card">
+        <div class="card-head">
+          <h3>Costo Total por Componente (Sueldos + Compras)</h3>
+          <button class="btn-ghost" data-toggle-table="pieComposicionCosto">Ver tabla</button>
+        </div>
+        <div class="pie-card-body">
+          <div class="chart-holder" id="pieComposicionCosto"></div>
+          <div class="pie-legend" id="pieComposicionCosto-legend"></div>
+        </div>
+        <div class="table-wrap" id="pieComposicionCosto-table"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>Costo por Mes</h2>
+    <div class="cards">
+      <div class="card full">
+        <div class="card-head">
+          <h3>Costo Total por Mes (Sueldos + Compras)</h3>
+          <button class="btn-ghost" data-toggle-table="chartCostoPorMes">Ver tabla</button>
+        </div>
+        <p class="caption">Para cada mes, la columna apilada suma el costo de Sueldos (haberes + aportes y contribuciones) y el Total Facturación de Compras de ese mes.</p>
+        <div class="chart-holder" id="chartCostoPorMes"></div>
+        <div class="table-wrap" id="chartCostoPorMes-table"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="app-footer">
+  Combina datos de Sueldos y Compras — se actualizan solos, sin tocar este archivo. Última carga: <span id="footerTimestampCostos">—</span>.
+</footer>
+
+</div>
+
+<div id="moduloProductividad" class="modulo-panel modulo-placeholder hidden">
+  <div class="construction-box">
+    <h2>Productividad</h2>
+    <p>Sección en Construcción.</p>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ============================================================
+  // Navegación entre módulos (Sueldos / Ventas / Compras)
+  // ============================================================
+  (function initModuleTabs() {
+    var tabs = document.querySelectorAll('.module-tab');
+    var panels = {
+      sueldos: document.getElementById('moduloSueldos'),
+      compras: document.getElementById('moduloCompras'),
+      costos: document.getElementById('moduloCostos'),
+      ventas: document.getElementById('moduloVentas'),
+      productividad: document.getElementById('moduloProductividad')
+    };
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        var mod = tab.getAttribute('data-modulo');
+        tabs.forEach(function (t) { t.classList.toggle('active', t === tab); });
+        Object.keys(panels).forEach(function (k) { panels[k].classList.toggle('hidden', k !== mod); });
+      });
+    });
+
+    // El header + la barra de módulos son sticky y su altura combinada depende
+    // del contenido (logo, tamaño de letra) — se mide en vez de hardcodearla,
+    // para que el filtro de Categoría (sticky, dentro de Sueldos) quede
+    // pegado justo debajo sin superponerse ni dejar hueco.
+    function ajustarStickyOffsets() {
+      var header = document.querySelector('header.app-header');
+      var tabsBar = document.getElementById('moduleTabs');
+      if (!header || !tabsBar) return;
+      var headerH = header.getBoundingClientRect().height;
+      var tabsH = tabsBar.getBoundingClientRect().height;
+      tabsBar.style.top = headerH + 'px';
+      document.querySelectorAll('#moduloSueldos > .filters').forEach(function (f) {
+        f.style.top = (headerH + tabsH) + 'px';
+      });
+    }
+    ajustarStickyOffsets();
+    window.addEventListener('resize', ajustarStickyOffsets);
+  })();
+
+  // ============================================================
+  // Configuración
+  // ============================================================
+  var API_URL = 'https://script.google.com/macros/s/AKfycbwPAQVF5o298mDPSnpDMw0lbPIj73PTH7MZIDM9NeO-UTDduTikoXraNnS9XMMsY_nS/exec';
+
+  var MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+  var MESES_DISPLAY = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var MESES_CORTO = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+  var CATEGORIAS_ORDEN = ['Ayudante', 'Medio Oficial', 'Oficial', 'Oficial Especializado', 'Otro'];
+  // Colores pedidos puntualmente para Personal Activo por Categoría, sobre la
+  // paleta nueva de la marca (--sld-*, ver :root) — como CAT_COLOR es
+  // compartido, quedan iguales en Horas por Categoría y en Variación del
+  // Valor de la Hora por Categoría (misma categoría, mismo color en todo el
+  // módulo). 'Otro' no se pidió puntualmente: usa --sld-pine, el tono que
+  // queda más separado en claridad de los otros 4.
+  // OJO: el validador de paletas de la guía de dataviz marca este set de 4
+  // como por debajo del piso de distinción para visión normal (ver aviso en
+  // el chat) — se implementó igual porque son los hex exactos pedidos.
+  var CAT_COLOR = {
+    'Ayudante': 'var(--sld-blue)',
+    'Medio Oficial': 'var(--sld-blue-light)',
+    'Oficial': 'var(--sld-slate)',
+    'Oficial Especializado': 'var(--sld-sage)',
+    'Otro': 'var(--sld-pine)'
+  };
+  var CSS = getComputedStyle(document.documentElement);
+  function cssVar(name) { return CSS.getPropertyValue(name).trim(); }
+  function catColorHex(cat) {
+    var v = CAT_COLOR[cat] || 'var(--ivc-azul-muy-oscuro)';
+    var m = v.match(/--([a-z0-9-]+)/);
+    return m ? cssVar('--' + m[1]) : v;
+  }
+
+  // ============================================================
+  // Utilidades
+  // ============================================================
+  function mesIndex(text) {
+    if (text === null || text === undefined) return -1;
+    return MESES.indexOf(text.toString().trim().toUpperCase());
+  }
+  function normalizarCategoria(raw) {
+    if (!raw) return 'Otro';
+    var t = raw.toString().trim();
+    for (var i = 0; i < CATEGORIAS_ORDEN.length; i++) {
+      if (CATEGORIAS_ORDEN[i].toLowerCase() === t.toLowerCase()) return CATEGORIAS_ORDEN[i];
+    }
+    return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+  }
+  function tituloDesdeMayusculas(str) {
+    if (!str) return '';
+    return str.toString().trim().toLowerCase().replace(/(^|\s)([a-záéíóúñ])/g, function (m, sp, c) {
+      return sp + c.toUpperCase();
+    });
+  }
+  function num(v) { var n = Number(v); return isFinite(n) ? n : 0; }
+  function formatMoney(n) {
+    return '$' + Math.round(n).toLocaleString('es-AR');
+  }
+  // Formato compacto para montos en pesos (ejes, totales sobre barras, leyendas).
+  // Todo valor monetario del tablero lleva el signo $ delante del importe —
+  // criterio general de formato, igual que formatMoney().
+  function formatCompact(n) {
+    var sign = n < 0 ? '-' : '';
+    n = Math.abs(n);
+    var out;
+    if (n >= 1e9) out = (n / 1e9).toFixed(1).replace(/\.0$/, '') + 'MM';
+    else if (n >= 1e6) out = (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+    else if (n >= 1e3) out = (n / 1e3).toFixed(0) + 'K';
+    else out = n.toFixed(0);
+    return sign + '$' + out;
+  }
+  function formatNum(n) { return Math.round(n).toLocaleString('es-AR'); }
+  function niceTicks(maxVal, count) {
+    count = count || 5;
+    if (maxVal <= 0) return [0, 1];
+    var rawStep = maxVal / count;
+    var mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    var norm = rawStep / mag;
+    var step;
+    if (norm < 1.5) step = 1 * mag;
+    else if (norm < 3) step = 2 * mag;
+    else if (norm < 7) step = 5 * mag;
+    else step = 10 * mag;
+    var ticks = [];
+    var top = Math.ceil(maxVal / step) * step;
+    for (var t = 0; t <= top + step * 1e-6; t += step) ticks.push(Math.round(t * 1000) / 1000);
+    return ticks;
+  }
+
+  function esperar(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+
+  // Reintenta automáticamente ante un corte momentáneo del lado de Apps
+  // Script (por ejemplo, un "arranque en frío" del deployment después de estar
+  // inactivo) — en esos casos Google devuelve una página de error HTML en vez
+  // del JSON esperado, y sin reintento eso rompía todo el tablero con
+  // "Unexpected token '<'...". Con 2 reintentos (1s de espera entre cada uno)
+  // esos cortes casi nunca llegan a notarse.
+  function fetchRecurso(recurso, modulo, intentosRestantes, opts) {
+    modulo = modulo || 'sueldos';
+    intentosRestantes = intentosRestantes == null ? 2 : intentosRestantes;
+    opts = opts || {};
+    // Por default el aviso de reintento va al status box global (arriba a la
+    // derecha) — bien para Sueldos/Compras, que son el pedido "principal".
+    // Ventas se llama aparte y pasa su propio aviso (ver más abajo) para no
+    // pisar ese status global con reintentos de una fuente que es
+    // independiente del resto del tablero.
+    var avisarReintento = opts.onReintentar || function (msg) { setStatus(true, msg); };
+    var url = API_URL + '?modulo=' + encodeURIComponent(modulo) + '&recurso=' + encodeURIComponent(recurso);
+    function reintentarSiQueda(motivo) {
+      if (intentosRestantes > 0) {
+        // Le avisa al usuario que sigue intentando en vez de dejar el
+        // "Cargando datos…" quieto — un corte momentáneo puede tardar unos
+        // segundos en resolverse solo, y sin este aviso parece que se colgó.
+        avisarReintento('Cargando datos… (reintentando ' + recurso + ')');
+        return esperar(1000).then(function () { return fetchRecurso(recurso, modulo, intentosRestantes - 1, opts); });
+      }
+      throw motivo;
+    }
+    return fetch(url).then(function (r) { return r.text(); }, reintentarSiQueda).then(function (text) {
+      var data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        return reintentarSiQueda(new Error(modulo + '/' + recurso + ': la API no devolvió JSON válido (probable corte momentáneo de Apps Script).'));
+      }
+      if (data && data.error) throw new Error(modulo + '/' + recurso + ': ' + data.error);
+      return data;
+    });
+  }
+
+  // ============================================================
+  // SVG helpers
+  // ============================================================
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs) {
+    var e = document.createElementNS(NS, tag);
+    if (attrs) for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  // Medición de texto vía canvas (no vía getBBox): a diferencia de getBBox,
+  // funciona aunque el gráfico esté dentro de un panel oculto (display:none) —
+  // como pasa con Compras al cargar los datos mientras se ve la pestaña Sueldos.
+  var __measureCanvas = null;
+  function measureTextWidth(text, font) {
+    if (!__measureCanvas) __measureCanvas = document.createElement('canvas');
+    var ctx = __measureCanvas.getContext('2d');
+    ctx.font = font;
+    return ctx.measureText(text).width;
+  }
+  function vBarPath(x, yTop, width, height, r) {
+    if (height <= 0) return '';
+    r = Math.min(r, width / 2, height);
+    var yBottom = yTop + height;
+    return 'M' + x + ',' + yBottom +
+      ' L' + x + ',' + (yTop + r) +
+      ' Q' + x + ',' + yTop + ' ' + (x + r) + ',' + yTop +
+      ' L' + (x + width - r) + ',' + yTop +
+      ' Q' + (x + width) + ',' + yTop + ' ' + (x + width) + ',' + (yTop + r) +
+      ' L' + (x + width) + ',' + yBottom + ' Z';
+  }
+  function hBarPath(x, y, width, height, r) {
+    if (width <= 0) return '';
+    r = Math.min(r, height / 2, width);
+    var xRight = x + width;
+    return 'M' + x + ',' + y +
+      ' L' + (xRight - r) + ',' + y +
+      ' Q' + xRight + ',' + y + ' ' + xRight + ',' + (y + r) +
+      ' L' + xRight + ',' + (y + height - r) +
+      ' Q' + xRight + ',' + (y + height) + ' ' + (xRight - r) + ',' + (y + height) +
+      ' L' + x + ',' + (y + height) + ' Z';
+  }
+
+  // Tooltip
+  var tooltipEl = document.getElementById('tooltip');
+  function renderTooltip(title, rows) {
+    tooltipEl.textContent = '';
+    var t = document.createElement('div');
+    t.className = 'tt-title';
+    t.textContent = title;
+    tooltipEl.appendChild(t);
+    rows.forEach(function (r) {
+      var row = document.createElement('div');
+      row.className = 'tt-row';
+      if (r.color) {
+        var key = document.createElement('span');
+        key.className = 'tt-key';
+        key.style.background = r.color;
+        row.appendChild(key);
+      }
+      var name = document.createElement('span');
+      name.className = 'tt-name';
+      name.textContent = r.label;
+      var val = document.createElement('span');
+      val.className = 'tt-value';
+      val.textContent = r.value;
+      row.appendChild(name);
+      row.appendChild(val);
+      tooltipEl.appendChild(row);
+    });
+  }
+  function moveTooltip(evt) {
+    var pad = 16;
+    var x = evt.clientX + pad, y = evt.clientY + pad;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var rect = tooltipEl.getBoundingClientRect();
+    if (x + rect.width > vw - 8) x = evt.clientX - rect.width - pad;
+    if (y + rect.height > vh - 8) y = evt.clientY - rect.height - pad;
+    tooltipEl.style.left = x + 'px';
+    tooltipEl.style.top = y + 'px';
+  }
+  function showTooltip(evt) { tooltipEl.style.display = 'block'; moveTooltip(evt); }
+  function hideTooltip() { tooltipEl.style.display = 'none'; }
+
+  function legendRow(container, items) {
+    var wrap = document.createElement('div');
+    wrap.className = 'legend';
+    items.forEach(function (it) {
+      var li = document.createElement('div');
+      li.className = 'legend-item';
+      var sw = document.createElement('span');
+      sw.className = 'legend-swatch' + (it.line ? ' line' : '') + (it.hollow ? ' hollow' : '') + (it.dashed ? ' dashed' : '');
+      if (it.hollow) {
+        sw.style.borderColor = it.color;
+      } else if (it.dashed) {
+        sw.style.background = 'repeating-linear-gradient(to right, ' + it.color + ' 0, ' + it.color + ' 4px, transparent 4px, transparent 7px)';
+      } else {
+        sw.style.background = it.color;
+      }
+      li.appendChild(sw);
+      var txt = document.createElement('span');
+      txt.textContent = it.label;
+      li.appendChild(txt);
+      wrap.appendChild(li);
+    });
+    container.appendChild(wrap);
+  }
+
+  function emptyState(container, msg) {
+    container.innerHTML = '';
+    var p = document.createElement('div');
+    p.className = 'empty-note';
+    p.textContent = msg || 'Sin datos para el período seleccionado.';
+    container.appendChild(p);
+  }
+
+  // ============================================================
+  // Chart: grouped / stacked bar (categorías en X)
+  // ============================================================
+  function renderBarChart(container, categories, series, opts) {
+    opts = opts || {};
+    container.innerHTML = '';
+    if (!categories.length || !series.length) return emptyState(container);
+
+    var stacked = !!opts.stacked;
+    var width = 780, height = opts.height || 300;
+    var legendH = (series.length > 1) ? 26 : 0;
+    var totalLabelH = (stacked && opts.stackTotals) ? 20 : 0;
+    var margin = { top: 14 + legendH + totalLabelH, right: 14, bottom: 34, left: opts.leftMargin || 60 };
+    var plotW = width - margin.left - margin.right;
+    var plotH = height - margin.top - margin.bottom;
+
+    var maxVal;
+    if (stacked) {
+      maxVal = Math.max.apply(null, categories.map(function (_, i) {
+        return series.reduce(function (s, ser) { return s + num(ser.values[i]); }, 0);
+      }).concat([0]));
+    } else {
+      maxVal = Math.max.apply(null, series.reduce(function (acc, ser) { return acc.concat(ser.values.map(num)); }, []).concat([0]));
+    }
+    var ticks = niceTicks(maxVal || 1, 5);
+    var yMax = ticks[ticks.length - 1] || 1;
+    function yScale(v) { return plotH - (v / yMax) * plotH; }
+    var fmt = opts.valueFormatter || formatCompact;
+
+    var svg = el('svg', { viewBox: '0 0 ' + width + ' ' + height });
+    var plot = el('g', { transform: 'translate(' + margin.left + ',' + margin.top + ')' });
+    var totalLabelEls = []; // etiquetas de total por barra, para el recuadro gris (opts.totalBadge)
+
+    ticks.forEach(function (t) {
+      var y = yScale(t);
+      plot.appendChild(el('line', { x1: 0, x2: plotW, y1: y, y2: y, class: t === 0 ? 'axis-line' : 'grid-line' }));
+      var lbl = el('text', { x: -8, y: y + 3, 'text-anchor': 'end' });
+      lbl.textContent = fmt(t);
+      plot.appendChild(lbl);
+    });
+
+    var band = plotW / categories.length;
+    var barR = 3;
+    var barMax = 24;
+    function catOpacity(i) {
+      return (opts.emphasisIndex == null || opts.emphasisIndex === i) ? 1 : 0.3;
+    }
+
+    if (stacked) {
+      var barW = Math.min(barMax, band * 0.55);
+      var gap = 2;
+      categories.forEach(function (cat, i) {
+        var cx = i * band + band / 2 - barW / 2;
+        var acc = 0;
+        var visible = series.filter(function (s) { return num(s.values[i]) > 0; });
+        visible.forEach(function (ser, si) {
+          var v = num(ser.values[i]);
+          var y0 = yScale(acc);
+          var y1 = yScale(acc + v);
+          var h = Math.max(0, (y0 - y1) - (si < visible.length - 1 ? gap : 0));
+          var isTop = si === visible.length - 1;
+          var path = isTop ? vBarPath(cx, y1, barW, h, barR) : vBarPath(cx, y1, barW, h, 0);
+          var rectAttrs = ser.hollow
+            ? { d: path, fill: 'none', stroke: ser.color, 'stroke-width': 1.5, 'stroke-dasharray': '5,3', opacity: catOpacity(i) }
+            : { d: path, fill: ser.color, opacity: catOpacity(i) };
+          var rect = el('path', rectAttrs);
+          rect.addEventListener('pointermove', function (evt) {
+            var rows = series.filter(function (s) { return !s.hollow || num(s.values[i]) > 0; })
+              .map(function (s) { return { label: s.name, value: fmt2(num(s.values[i]), opts), color: s.color }; });
+            if (opts.stackTotals) {
+              var tot = series.reduce(function (s, ser) { return s + num(ser.values[i]); }, 0);
+              rows.push({ label: 'Total', value: (opts.totalFormatter || fmt2)(tot, opts) });
+            }
+            renderTooltip(categories[i], rows);
+            showTooltip(evt);
+          });
+          rect.addEventListener('pointerleave', hideTooltip);
+          plot.appendChild(rect);
+          acc += v;
+        });
+        if (opts.stackTotals && acc > 0) {
+          var totalFmt = opts.totalFormatter || fmt;
+          var tl = el('text', { x: i * band + band / 2, y: yScale(acc) - 8, 'text-anchor': 'middle', class: 'end-label' });
+          if (opts.emphasisIndex === i) { tl.setAttribute('font-weight', '700'); }
+          tl.textContent = totalFmt(acc);
+          tl.setAttribute('opacity', catOpacity(i));
+          plot.appendChild(tl);
+          if (opts.totalBadge) totalLabelEls.push(tl);
+        }
+        var xl = el('text', { x: i * band + band / 2, y: plotH + 18, 'text-anchor': 'middle' });
+        if (opts.emphasisIndex === i) { xl.setAttribute('font-weight', '700'); xl.setAttribute('fill', 'var(--text-primary)'); }
+        xl.textContent = cat;
+        plot.appendChild(xl);
+      });
+    } else {
+      var n = series.length;
+      var groupW = Math.min(barMax * n + 2 * (n - 1), band * 0.78);
+      var bw = Math.min(barMax, (groupW - 2 * (n - 1)) / n);
+      categories.forEach(function (cat, i) {
+        var groupX = i * band + band / 2 - groupW / 2;
+        series.forEach(function (ser, si) {
+          var v = num(ser.values[i]);
+          var x = groupX + si * (bw + 2);
+          var y = yScale(v);
+          var h = plotH - y;
+          var path = vBarPath(x, y, bw, h, barR);
+          var rect = el('path', { d: path, fill: ser.color, opacity: catOpacity(i) });
+          rect.addEventListener('pointermove', function (evt) {
+            renderTooltip(cat, [{ label: ser.name, value: fmt2(v, opts), color: ser.color }]);
+            showTooltip(evt);
+          });
+          rect.addEventListener('pointerleave', hideTooltip);
+          plot.appendChild(rect);
+        });
+        var xl = el('text', { x: i * band + band / 2, y: plotH + 18, 'text-anchor': 'middle' });
+        if (opts.emphasisIndex === i) { xl.setAttribute('font-weight', '700'); xl.setAttribute('fill', 'var(--text-primary)'); }
+        xl.textContent = cat;
+        plot.appendChild(xl);
+      });
+    }
+
+    svg.appendChild(plot);
+    container.appendChild(svg);
+    if (series.length > 1 && !opts.hideLegend) {
+      legendRow(container, series.map(function (s) { return { color: s.color, label: s.name, hollow: !!s.hollow }; }));
+      container.insertBefore(container.lastChild, svg);
+    }
+
+    // Recuadro gris detrás de cada etiqueta de total (opts.totalBadge): el ancho
+    // se mide con canvas (measureTextWidth), no con getBBox — este gráfico se
+    // arma una sola vez al cargar los datos, y en ese momento el panel Compras
+    // puede estar oculto (display:none, si la pestaña activa es Sueldos), y
+    // getBBox devuelve 0 para todo lo que esté dentro de un contenedor oculto.
+    if (opts.totalBadge && totalLabelEls.length) {
+      var badgeFont = '700 11px system-ui, -apple-system, "Segoe UI", sans-serif';
+      var padX = 5, padY = 3, ascent = 8, descent = 3;
+      totalLabelEls.forEach(function (tl) {
+        var w = measureTextWidth(tl.textContent, badgeFont);
+        var cx = Number(tl.getAttribute('x'));
+        var cy = Number(tl.getAttribute('y'));
+        var rect = el('rect', {
+          x: cx - w / 2 - padX, y: cy - ascent - padY,
+          width: w + padX * 2, height: ascent + descent + padY * 2,
+          rx: 4, ry: 4, fill: cssVar('--surface-2') || '#f6f8f8', stroke: cssVar('--border') || 'rgba(11,11,11,0.10)'
+        });
+        tl.parentNode.insertBefore(rect, tl);
+      });
+    }
+  }
+  function fmt2(v, opts) {
+    return opts && opts.tooltipFormatter ? opts.tooltipFormatter(v) : formatMoney(v);
+  }
+
+  // ============================================================
+  // Chart: horizontal bar (categoría en Y)
+  // ============================================================
+  function renderHorizontalBar(container, items, opts) {
+    opts = opts || {};
+    container.innerHTML = '';
+    if (!items.length) return emptyState(container);
+
+    var width = 780;
+    var rowH = opts.rowHeight || 34;
+    var barFrac = opts.barThickness || 0.6;
+    var margin = { top: 8, right: 46, bottom: 8, left: opts.leftMargin || 140 };
+    var plotW = width - margin.left - margin.right;
+    var plotH = items.length * rowH;
+    var height = plotH + margin.top + margin.bottom;
+
+    var maxVal = Math.max.apply(null, items.map(function (i) { return num(i.value); }).concat([1]));
+    var fmt = opts.valueFormatter || formatCompact;
+    var fontScale = opts.rowHeight ? Math.min(1.6, opts.rowHeight / 34) : 1;
+
+    var svg = el('svg', { viewBox: '0 0 ' + width + ' ' + height });
+    var plot = el('g', { transform: 'translate(' + margin.left + ',' + margin.top + ')' });
+
+    items.forEach(function (it, i) {
+      var y = i * rowH + rowH * (1 - barFrac) / 2;
+      var h = rowH * barFrac;
+      var w = (num(it.value) / maxVal) * plotW;
+      var path = hBarPath(0, y, Math.max(w, 1), h, 4);
+      var rect = el('path', { d: path, fill: it.color || cssVar('--ivc-turquesa'), opacity: (it.opacity != null ? it.opacity : 1) });
+      rect.addEventListener('pointermove', function (evt) {
+        renderTooltip(it.label, [{ label: opts.valueLabel || 'Valor', value: fmt(it.value) }]);
+        showTooltip(evt);
+      });
+      rect.addEventListener('pointerleave', hideTooltip);
+      plot.appendChild(rect);
+
+      var lbl = el('text', { x: -10, y: y + h / 2 + 4, 'text-anchor': 'end', style: fontScale !== 1 ? ('font-size:' + (11 * fontScale).toFixed(1) + 'px') : '' });
+      lbl.textContent = it.label;
+      plot.appendChild(lbl);
+
+      var val = el('text', { x: w + 8, y: y + h / 2 + 4, class: 'end-label', style: fontScale !== 1 ? ('font-size:' + (11 * fontScale).toFixed(1) + 'px') : '' });
+      val.textContent = fmt(it.value);
+      plot.appendChild(val);
+    });
+
+    svg.appendChild(plot);
+    container.appendChild(svg);
+
+    // Centra el bloque completo (etiquetas + barras + valores) dentro del
+    // ancho disponible: el ancho de las etiquetas de categoría varía según
+    // los datos, así que un margen izquierdo fijo deja el conjunto
+    // descentrado. Medimos el contenido ya renderizado y compensamos.
+    if (typeof svg.getBBox === 'function') {
+      try {
+        var contentBox = svg.getBBox();
+        // getBBox() devuelve {0,0,0,0} si el SVG está dentro de un contenedor
+        // display:none en ese momento (ej. la pestaña Ventas todavía no fue
+        // abierta cuando llegan sus datos, igual que el caso ya conocido de
+        // Compras cargando con la pestaña Sueldos activa). Con bbox en cero,
+        // el cálculo de centrado interpretaría "no hay contenido" y correría
+        // todo el gráfico cientos de unidades hacia la derecha, empujando las
+        // etiquetas de valor fuera de la vista. Si el bbox es degenerado, no
+        // hay nada que centrar: se deja el margen izquierdo original tal cual.
+        if (contentBox.width <= 0 || contentBox.height <= 0) throw new Error('bbox vacío (contenedor oculto)');
+        var freeLeft = contentBox.x;
+        var freeRight = width - (contentBox.x + contentBox.width);
+        var shift = (freeRight - freeLeft) / 2;
+        if (isFinite(shift) && Math.abs(shift) > 0.5) {
+          plot.setAttribute('transform', 'translate(' + (margin.left + shift) + ',' + margin.top + ')');
+        }
+      } catch (e) { /* getBBox puede fallar si el SVG no está renderizado */ }
+    }
+  }
+
+  // ============================================================
+  // Chart: torta (part-to-whole). items: [{label, value, color}]
+  // ============================================================
+  function renderPieChart(container, items, opts) {
+    opts = opts || {};
+    container.innerHTML = '';
+    var total = items.reduce(function (s, it) { return s + num(it.value); }, 0);
+    if (!items.length || total <= 0) return emptyState(container);
+
+    var size = 200, cx = size / 2, cy = size / 2, r = size / 2 - 6;
+    var gap = 0.03; // pequeño hueco angular entre porciones (equivalente al gap de 2px entre marcas)
+    var svg = el('svg', { viewBox: '0 0 ' + size + ' ' + size });
+    var strokeColor = cssVar('--surface-1') || '#fff';
+
+    var startAngle = -Math.PI / 2;
+    items.forEach(function (it) {
+      var frac = num(it.value) / total;
+      var sweep = frac * Math.PI * 2;
+      var a0 = startAngle + Math.min(gap / 2, sweep / 2);
+      var a1 = startAngle + sweep - Math.min(gap / 2, sweep / 2);
+      var large = (a1 - a0) > Math.PI ? 1 : 0;
+      var x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
+      var x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+      var d = 'M' + cx + ',' + cy +
+        ' L' + x0.toFixed(2) + ',' + y0.toFixed(2) +
+        ' A' + r + ',' + r + ' 0 ' + large + ' 1 ' + x1.toFixed(2) + ',' + y1.toFixed(2) + ' Z';
+      var path = el('path', { d: d, fill: it.color, stroke: strokeColor, 'stroke-width': 2 });
+      path.addEventListener('pointermove', function (evt) {
+        renderTooltip(it.label, [{ color: it.color, label: 'Monto', value: formatMoney(it.value) + ' (' + (frac * 100).toFixed(1) + '%)' }]);
+        showTooltip(evt);
+      });
+      path.addEventListener('pointerleave', hideTooltip);
+      svg.appendChild(path);
+
+      // Etiqueta directa (%) sólo si la porción es lo bastante grande para
+      // que el texto entre sin recortarse — el resto se lee en la leyenda/tooltip.
+      if (frac >= 0.08) {
+        var mid = startAngle + sweep / 2;
+        var lx = cx + r * 0.62 * Math.cos(mid), ly = cy + r * 0.62 * Math.sin(mid);
+        var txt = el('text', {
+          x: lx.toFixed(2), y: ly.toFixed(2), 'text-anchor': 'middle', 'dominant-baseline': 'middle',
+          style: 'font-size:11px; font-weight:700; fill:#fff; pointer-events:none;'
+        });
+        txt.textContent = Math.round(frac * 100) + '%';
+        svg.appendChild(txt);
+      }
+      startAngle += sweep;
+    });
+
+    container.appendChild(svg);
+  }
+
+  function renderPieLegend(container, items) {
+    container.innerHTML = '';
+    var total = items.reduce(function (s, it) { return s + num(it.value); }, 0);
+    items.forEach(function (it) {
+      var row = document.createElement('div');
+      row.className = 'pie-legend-item';
+      var sw = document.createElement('span'); sw.className = 'legend-swatch'; sw.style.background = it.color;
+      var label = document.createElement('span'); label.className = 'pie-legend-label'; label.textContent = it.label;
+      var val = document.createElement('span'); val.className = 'pie-legend-value'; val.textContent = formatCompact(it.value);
+      var pct = document.createElement('span'); pct.className = 'pie-legend-pct';
+      pct.textContent = total > 0 ? (it.value / total * 100).toFixed(0) + '%' : '0%';
+      row.appendChild(sw); row.appendChild(label); row.appendChild(val); row.appendChild(pct);
+      container.appendChild(row);
+    });
+  }
+
+  // ============================================================
+  // Chart: multi-line con crosshair
+  // ============================================================
+  function renderLineChart(container, categories, series, opts) {
+    opts = opts || {};
+    container.innerHTML = '';
+    if (!categories.length || !series.length) return emptyState(container);
+
+    var width = 780, height = opts.height || 300;
+    var legendH = (series.length > 1) ? 26 : 0;
+    var margin = { top: 14 + legendH, right: 20, bottom: 34, left: opts.leftMargin || 60 };
+    var plotW = width - margin.left - margin.right;
+    var plotH = height - margin.top - margin.bottom;
+
+    var allVals = series.reduce(function (acc, s) { return acc.concat(s.values.filter(function(v){return v!==null;}).map(num)); }, []);
+    var maxVal = Math.max.apply(null, allVals.concat([0]));
+    var ticks = niceTicks(maxVal || 1, 5);
+    var yMax = ticks[ticks.length - 1] || 1;
+    function yScale(v) { return plotH - (v / yMax) * plotH; }
+    var stepX = categories.length > 1 ? plotW / (categories.length - 1) : 0;
+    function xScale(i) { return categories.length > 1 ? i * stepX : plotW / 2; }
+    var fmt = opts.valueFormatter || formatCompact;
+
+    var svg = el('svg', { viewBox: '0 0 ' + width + ' ' + height });
+    var plot = el('g', { transform: 'translate(' + margin.left + ',' + margin.top + ')' });
+
+    ticks.forEach(function (t) {
+      var y = yScale(t);
+      plot.appendChild(el('line', { x1: 0, x2: plotW, y1: y, y2: y, class: t === 0 ? 'axis-line' : 'grid-line' }));
+      var lbl = el('text', { x: -8, y: y + 3, 'text-anchor': 'end' });
+      lbl.textContent = fmt(t);
+      plot.appendChild(lbl);
+    });
+    categories.forEach(function (cat, i) {
+      var lbl = el('text', { x: xScale(i), y: plotH + 18, 'text-anchor': 'middle' });
+      lbl.textContent = cat;
+      plot.appendChild(lbl);
+    });
+
+    series.forEach(function (ser) {
+      var pts = ser.values.map(function (v, i) { return v === null || v === undefined ? null : [xScale(i), yScale(num(v))]; });
+      var segs = [];
+      var cur = [];
+      pts.forEach(function (p) {
+        if (p === null) { if (cur.length > 1) segs.push(cur); cur = []; }
+        else cur.push(p);
+      });
+      if (cur.length > 1) segs.push(cur);
+      var serOpacity = ser.opacity != null ? ser.opacity : 1;
+      segs.forEach(function (seg) {
+        var d = seg.map(function (p, i) { return (i === 0 ? 'M' : 'L') + p[0] + ',' + p[1]; }).join(' ');
+        var pathAttrs = { d: d, fill: 'none', stroke: ser.color, 'stroke-width': opts.strokeWidth || 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: serOpacity };
+        if (ser.dash) pathAttrs['stroke-dasharray'] = (ser.dash === true) ? '6,4' : ser.dash;
+        plot.appendChild(el('path', pathAttrs));
+      });
+      pts.forEach(function (p) {
+        if (!p) return;
+        var dot = el('circle', { cx: p[0], cy: p[1], r: 4, fill: ser.color, stroke: '#ffffff', 'stroke-width': 2, opacity: serOpacity });
+        plot.appendChild(dot);
+      });
+      var lastPt = null;
+      for (var i = pts.length - 1; i >= 0; i--) { if (pts[i]) { lastPt = pts[i]; break; } }
+      if (lastPt && opts.endLabels !== false) {
+        var el2 = el('text', { x: lastPt[0] + 6, y: lastPt[1] + 4, class: 'end-label', opacity: serOpacity });
+        el2.textContent = ser.name;
+        el2.setAttribute('fill', ser.color);
+        plot.appendChild(el2);
+      }
+    });
+
+    // crosshair overlay
+    var hoverLine = el('line', { x1: 0, x2: 0, y1: 0, y2: plotH, stroke: cssVar('--baseline'), 'stroke-width': 1, opacity: 0 });
+    plot.appendChild(hoverLine);
+    var overlay = el('rect', { x: 0, y: 0, width: plotW, height: plotH, fill: 'transparent' });
+    overlay.addEventListener('pointermove', function (evt) {
+      var rect = svg.getBoundingClientRect();
+      var scaleX = width / rect.width;
+      var localX = (evt.clientX - rect.left) * scaleX - margin.left;
+      var idx = Math.round(localX / (stepX || 1));
+      idx = Math.max(0, Math.min(categories.length - 1, idx));
+      hoverLine.setAttribute('x1', xScale(idx));
+      hoverLine.setAttribute('x2', xScale(idx));
+      hoverLine.setAttribute('opacity', 1);
+      var rows = series.filter(function(s){ return s.values[idx] !== null && s.values[idx] !== undefined; })
+        .map(function (s) { return { label: s.name, value: fmt(num(s.values[idx])), color: s.color }; });
+      renderTooltip(categories[idx], rows);
+      showTooltip(evt);
+    });
+    overlay.addEventListener('pointerleave', function () { hoverLine.setAttribute('opacity', 0); hideTooltip(); });
+    plot.appendChild(overlay);
+
+    svg.appendChild(plot);
+    container.appendChild(svg);
+    if (series.length > 1) {
+      legendRow(container, series.map(function (s) { return { color: s.color, label: s.name, line: true, dashed: !!s.dash }; }));
+      container.insertBefore(container.lastChild, svg);
+    }
+  }
+
+  // ============================================================
+  // Tabla genérica (para vista alternativa de gráficos)
+  // ============================================================
+  function renderSimpleTable(container, columns, rows) {
+    container.innerHTML = '';
+    var table = document.createElement('table');
+    table.className = 'data-table';
+    var thead = document.createElement('thead');
+    var htr = document.createElement('tr');
+    columns.forEach(function (c) {
+      var th = document.createElement('th');
+      th.textContent = c;
+      htr.appendChild(th);
+    });
+    thead.appendChild(htr);
+    table.appendChild(thead);
+    var tbody = document.createElement('tbody');
+    rows.forEach(function (r) {
+      var tr = document.createElement('tr');
+      r.forEach(function (cell) {
+        var td = document.createElement('td');
+        td.textContent = cell;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    container.appendChild(table);
+  }
+
+  function wireTableToggle(btnSelector) {
+    document.querySelectorAll('[data-toggle-table]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-toggle-table');
+        var chartEl = document.getElementById(id);
+        var tableEl = document.getElementById(id + '-table');
+        var showingTable = tableEl.classList.contains('visible');
+        if (showingTable) {
+          tableEl.classList.remove('visible');
+          chartEl.classList.remove('hidden');
+          btn.textContent = 'Ver tabla';
+          btn.classList.remove('active');
+        } else {
+          tableEl.classList.add('visible');
+          chartEl.classList.add('hidden');
+          btn.textContent = 'Ver gráfico';
+          btn.classList.add('active');
+        }
+      });
+    });
+  }
+
+  // ============================================================
+  // Estado global + datos
+  // ============================================================
+  var RAW = {};
+  var anioOperativo = null; // último año con datos de nómina reales (costo_mensual) — no editable por el usuario
+  // state.mes es el único filtro de Mes para toda la hoja Sueldos (Resumen
+  // General, Costos Totales y Horas y Adicionales) — antes cada sección tenía
+  // su propio filtro de Mes por separado (mesResumen/mesCosto/horasMes),
+  // lo que podía mostrar tres períodos distintos a la vez y confundir. Ahora
+  // un solo selector, en la barra de filtros de arriba, maneja las tres.
+  var state = { categoria: 'Todas', anioAltasBajas: null, mes: null, horasQuincena: 'todas', busqueda: '', precioGrupos: { basico: true, bruto: true } };
+
+  var anioOperativoCompras = null; // último año con facturas cargadas
+  var FILTROS_FACTURA_CAMPOS = [
+    { campo: 'categoria', selectId: 'filtroCatFactura' },
+    { campo: 'categoriaMacro', selectId: 'filtroCatMacroFactura' },
+    { campo: 'tipoItem', selectId: 'filtroTipoItemFactura' },
+    { campo: 'imputacionGestion', selectId: 'filtroImputacionFactura' },
+    { campo: 'flujoFondos', selectId: 'filtroFlujoFactura' },
+    { campo: 'comportamientoCosto', selectId: 'filtroComportamientoFactura' },
+    { campo: 'area', selectId: 'filtroAreaFactura' }
+  ];
+  var DESGLOSE_FACTURA_CAMPOS = [
+    { campo: 'categoria', label: 'Categoría' },
+    { campo: 'categoriaMacro', label: 'Categoría Macro' },
+    { campo: 'subcategoria', label: 'Subcategoría de Factura' },
+    { campo: 'tipoItem', label: 'Tipo de Ítem' },
+    { campo: 'imputacionGestion', label: 'Imputación Gestión' },
+    { campo: 'flujoFondos', label: 'Flujo de Fondos' },
+    { campo: 'comportamientoCosto', label: 'Comportamiento del Costo' },
+    { campo: 'area', label: 'Área' }
+  ];
+  var stateCompras = {
+    mesResumen: null,
+    anioFacturas: null,
+    filtros: { categoria: 'Todas', categoriaMacro: 'Todas', tipoItem: 'Todas', imputacionGestion: 'Todas', flujoFondos: 'Todas', comportamientoCosto: 'Todas', area: 'Todas' },
+    desglosePor: 'categoriaMacro',
+    valoresDesglose: {}, // {valor: boolean} — se reconstruye cada vez que cambia el "universo" (año/pre-filtros/variable)
+    desgloseInfo: null   // {orden, colores, otrosSet, totales} — ranking y colores estables mientras no cambie el universo
+  };
+
+  // Paleta categórica única para todo el módulo Compras — suave, opaca y
+  // desaturada (azul, naranja, aqua, ciruela, mostaza, verde, violeta, rojo),
+  // en vez de la paleta de marca IVC original que no se distinguía bien entre
+  // categorías. Verificada con el validador de daltonismo/contraste del skill
+  // de dataviz (node validate_palette.js) en vez de elegida a ojo.
+  //
+  // Los primeros 4 tonos son EXACTAMENTE los mismos que usan los 4 gráficos de
+  // torta de "Distribución de Facturación" (PALETA_TORTA, más abajo) — así una
+  // categoría se ve del mismo color en la torta y en la barra apilada. Los 4
+  // tonos siguientes extienden la paleta a 8 valores: esto es seguro acá porque
+  // una barra apilada solo exige que los tonos VECINOS se distingan entre sí
+  // (chequeo "adjacent"), un estándar más permisivo que el de las tortas.
+  //
+  // Más allá de 8 valores distintos, el resto se agrupa en "Otros" (gris
+  // neutro) en vez de generar más tonos — evita el "arcoíris" de segmentos
+  // indistinguibles.
+  var PALETA_FACTURAS_EXT = ['#427dc2', '#d37149', '#37a67d', '#9c5590', '#d49b22', '#238522', '#5a4e9f', '#cd5958'];
+  var COLOR_OTROS_FACTURAS = '#898781';
+
+  // Ventas — estado del filtro de Año + Meses (multi-selección) para la
+  // sección "Análisis de Productos Vendidos". Es independiente del panel de
+  // "Conexión de Datos" de arriba, que se mantiene siempre global (muestra el
+  // estado real de la conexión, no debe cambiar según lo que el usuario filtre).
+  var anioOperativoVentas = null; // último año con remitos cargados
+  var stateVentas = { anio: null, meses: null, familiaEvolucion: 'postes' }; // meses: null = todos los meses del año elegido
+
+  // Paleta categórica para las 7 categorías de "Unidades Vendidas por
+  // Categoría" (Postes de Alta/Media/Baja Tensión + Crucetas + Ménsulas +
+  // Vínculos + Otros). Antes usábamos una rampa ordinal de un solo tono para
+  // los 3 niveles de Tensión — funcionaba bien cuando eran las únicas 4
+  // categorías del gráfico (con Accesorios como resto), pero ahora conviven
+  // con 4 familias más que no tienen ningún orden entre sí. Mezclar una rampa
+  // ordinal dentro de un set de 7 categorías rompe el piso de croma y el
+  // chequeo de separación por daltonismo (falla confirmada con el validador
+  // del skill de dataviz al probarlo) — la elección correcta acá es un color
+  // por identidad, no un gradiente. Reutiliza 6 tonos ya validados en este
+  // mismo tablero para pares adyacentes (los primeros 6 de PALETA_FACTURAS_EXT,
+  // en el mismo orden), más el gris neutro ya establecido para "Otros".
+  var COLOR_POSTES_ALTA = '#427dc2';
+  var COLOR_POSTES_MEDIA = '#d37149';
+  var COLOR_POSTES_BAJA = '#37a67d';
+  var COLOR_CRUCETAS = '#9c5590';
+  var COLOR_MENSULAS = '#d49b22';
+  var COLOR_VINCULOS = '#238522';
+  // Otros usa COLOR_OTROS_FACTURAS (definido arriba).
+
+  // Rampas ordinales (un solo tono, claro→oscuro) para el desglose interno de
+  // Crucetas/Ménsulas/Vínculos en el gráfico de Evolución — ahí sí aplica una
+  // rampa, porque dentro de UNA familia seleccionada los niveles (Simple/
+  // Doble/Triple) sí tienen un orden real, y nunca conviven en pantalla con
+  // los tonos de las otras familias (el filtro de familia es de a una por
+  // vez). Cada rampa parte del mismo tono que ese color tiene en el gráfico de
+  // categorías de arriba, para que seguir siendo "la familia Crucetas" se
+  // note aunque el matiz exacto varíe. Validadas con validateOrdinal(): las
+  // 3 pasan Lightness monotone, ΔL >= 0.06, contraste del escalón más claro
+  // >= 2:1 y un solo hue.
+  var RAMPA_CRUCETAS = ['#95598b', '#7c3771', '#5d1a54']; // Simple, Doble, Triple
+  var RAMPA_MENSULAS = ['#966800', '#7d4800'];             // Simple, Doble
+  var RAMPA_VINCULOS = ['#398536', '#006a00'];             // Doble, Triple
+
+  // Paleta para los gráficos de torta (Distribución de Facturación). Los gráficos
+  // de torta son una forma "todos-contra-todos" (dos porciones cualquiera pueden
+  // quedar lado a lado), lo que exige el chequeo de daltonismo más estricto —
+  // muchísimo más exigente que el de barras apiladas de arriba (donde solo
+  // importan los pares vecinos). Estos 4 tonos —azul, naranja, aqua y ciruela—,
+  // más suaves y desaturados que la paleta por defecto pero sin caer en gris,
+  // fueron elegidos y verificados a propósito para pasar ese chequeo estricto
+  // los 4 juntos; un 5° tono ya no se logra distinguir de alguno de los otros
+  // ni para daltónicos ni para visión normal. Por eso, a partir del 5° valor por
+  // monto, se agrupan en "Otros" (gris neutro) en vez de sumar un tono más.
+  // (Son las mismas 4 primeras posiciones que PALETA_FACTURAS_EXT, arriba.)
+  var PALETA_TORTA = ['#427dc2', '#d37149', '#37a67d', '#9c5590'];
+
+  // Color de "Sueldos" en la torta y la barra de Costos. NO es la variable
+  // --ivc-turquesa de marca (#008175): ese tono, verificado con el validador
+  // de paletas de la guía de dataviz, no se distingue lo suficiente (falla el
+  // piso de croma y, en el gráfico de torta, el chequeo "todos contra todos")
+  // frente al azul/verde de PALETA_TORTA una vez que conviven en el mismo
+  // gráfico categórico. Este verde-turquesa más saturado sí pasa el chequeo
+  // completo junto a los 4 tonos de PALETA_TORTA y sigue leyéndose como la
+  // misma familia de color de marca. --ivc-turquesa no se toca en ningún otro
+  // lado del tablero.
+  var COLOR_SUELDOS_COSTOS = '#007658';
+
+  // Color del segmento "Imputación estimada por dato faltante" en el gráfico
+  // Costo Total por Mes: se dibuja sin relleno sólido (fill:none), solo con
+  // este color de borde punteado — por eso no compite por croma/contraste
+  // contra Sueldos/Compras como si fuera un color de relleno más (esas
+  // reglas de la guía de dataviz aplican a áreas rellenas, no a un contorno
+  // de anotación). Ámbar para que se lea como "estimado / a confirmar", no
+  // como un tercer componente de costo real.
+  var COLOR_IMPUTACION_COSTOS = '#b8860b';
+
+  function setStatus(ok, msg) {
+    var box = document.getElementById('statusBox');
+    box.className = ok ? 'status' : 'status error';
+    box.innerHTML = '';
+    var dot = document.createElement('span'); dot.className = 'dot';
+    box.appendChild(dot);
+    box.appendChild(document.createTextNode(msg));
+  }
+
+  // 2 pedidos en paralelo (Sueldos combinado + Compras) en vez de los 7
+  // simultáneos de antes. Nota sobre una vuelta atrás: una primera versión de
+  // este arreglo juntaba TODO (Sueldos + Compras) en 1 solo pedido, pero eso
+  // hacía una sola ejecución de Apps Script muy lenta (sumaba en secuencia el
+  // trabajo de las 7 llamadas originales) y el tablero pasó a tardar mucho y,
+  // en la práctica, a fallar por timeout en vez de por concurrencia. Con 2
+  // pedidos en paralelo, cada uno es liviano (Compras sigue siendo su propia
+  // llamada, ya que abre un Google Sheet aparte) y la chance de que las DOS
+  // fallen a la vez es mucho más baja que con 7.
+  Promise.all([
+    fetchRecurso('bundle', 'sueldos'),
+    fetchRecurso('facturas', 'compras')
+  ]).then(function (res) {
+    var bundle = res[0];
+    RAW.resumenDotacion = bundle.resumen_dotacion;
+    RAW.evolucionDotacion = normalizarEvolucionDotacion(bundle.evolucion_dotacion);
+    RAW.costoMensual = normalizarCostoMensual(bundle.costo_mensual);
+    RAW.erogacion = normalizarErogacion(bundle.erogacion);
+    RAW.horas = normalizarHoras(bundle.horas);
+    RAW.precios = normalizarPrecios(bundle.precios);
+    RAW.facturas = normalizarFacturas(res[1]);
+
+    // Año operativo = el más reciente con datos reales de costo mensual. Todas las
+    // secciones de costo/horas/precios usan este año fijo (por ahora hay uno solo:
+    // 2026); cuando exista más de un año con datos de nómina, esto pasa a necesitar
+    // su propio selector — hoy no lo exponemos para no repetir el problema que
+    // motivó este cambio (años sueltos casi vacíos en un filtro global).
+    var aniosConCosto = Array.from(new Set(RAW.costoMensual.map(function (r) { return r.anio; }))).sort(function (a, b) { return a - b; });
+    anioOperativo = aniosConCosto.length ? aniosConCosto[aniosConCosto.length - 1] : new Date().getFullYear();
+
+    var aniosAltasBajas = coleccionAniosAltasBajas();
+    var selAnioAB = document.getElementById('filtroAnioAltasBajas');
+    aniosAltasBajas.forEach(function (a) {
+      var o = document.createElement('option'); o.value = a; o.textContent = a; selAnioAB.appendChild(o);
+    });
+    state.anioAltasBajas = aniosAltasBajas.length ? aniosAltasBajas[aniosAltasBajas.length - 1] : anioOperativo;
+    selAnioAB.value = state.anioAltasBajas;
+    selAnioAB.addEventListener('change', function () { state.anioAltasBajas = Number(selAnioAB.value); renderAltasBajas(); });
+
+    var selCat = document.getElementById('filtroCategoria');
+    CATEGORIAS_ORDEN.forEach(function (c) {
+      var o = document.createElement('option'); o.value = c; o.textContent = c; selCat.appendChild(o);
+    });
+    selCat.addEventListener('change', function () { state.categoria = selCat.value; renderAll(); });
+
+    // Filtro de Mes único para toda la hoja Sueldos (Resumen General, Costos
+    // Totales y Horas y Adicionales) — reemplaza los tres filtros de Mes que
+    // existían antes por sección, que podían quedar en meses distintos entre
+    // sí y confundir sobre qué período se estaba mirando. Por defecto muestra
+    // el último mes con datos de nómina cargados; se puede elegir cualquier
+    // otro mes, o "Todos los meses" para ver el acumulado del año — Personal
+    // Total, Altas y Bajas se reconstruyen a partir de la evolución de
+    // altas/bajas del mes elegido en vez de usar el total de hoy.
+    var selMesSueldos = document.getElementById('filtroMesSueldos');
+    MESES_DISPLAY.forEach(function (m, i) {
+      var o = document.createElement('option'); o.value = i; o.textContent = m; selMesSueldos.appendChild(o);
+    });
+    var costoAnioInicial = RAW.costoMensual.filter(function (r) { return r.anio === anioOperativo; });
+    var mesResumenDefault = costoAnioInicial.length ? costoAnioInicial[costoAnioInicial.length - 1].mesIdx : new Date().getMonth();
+    state.mes = mesResumenDefault;
+    selMesSueldos.value = mesResumenDefault;
+    actualizarPeriodoSeleccionado();
+    selMesSueldos.addEventListener('change', function () {
+      state.mes = selMesSueldos.value === 'todos' ? 'todos' : Number(selMesSueldos.value);
+      actualizarPeriodoSeleccionado();
+      renderAll();
+    });
+    document.getElementById('filtroHorasQuincena').addEventListener('change', function (e) { state.horasQuincena = e.target.value; renderHorasTodo(); });
+    document.getElementById('btnLimpiarFiltrosCategoria').addEventListener('click', function () {
+      state.categoria = 'Todas'; selCat.value = 'Todas';
+      state.mes = 'todos'; selMesSueldos.value = 'todos';
+      state.horasQuincena = 'todas'; document.getElementById('filtroHorasQuincena').value = 'todas';
+      actualizarPeriodoSeleccionado();
+      renderAll();
+    });
+    document.getElementById('buscarPersona').addEventListener('input', function (e) { state.busqueda = e.target.value.toLowerCase(); renderHorasPersona(); });
+
+    // --- Módulo Compras: años/meses disponibles + filtros dinámicos ---
+    var aniosFacturas = Array.from(new Set(RAW.facturas.map(function (f) { return f.anio; }))).sort(function (a, b) { return a - b; });
+    anioOperativoCompras = aniosFacturas.length ? aniosFacturas[aniosFacturas.length - 1] : new Date().getFullYear();
+
+    var selMesResumenCompras = document.getElementById('filtroMesResumenCompras');
+    MESES_DISPLAY.forEach(function (m, i) {
+      var o = document.createElement('option'); o.value = i; o.textContent = m; selMesResumenCompras.appendChild(o);
+    });
+    var facturasAnioOp = RAW.facturas.filter(function (f) { return f.anio === anioOperativoCompras; });
+    var mesResumenComprasDefault = facturasAnioOp.length
+      ? Math.max.apply(null, facturasAnioOp.map(function (f) { return f.mesIdx; }))
+      : new Date().getMonth();
+    stateCompras.mesResumen = mesResumenComprasDefault;
+    selMesResumenCompras.value = mesResumenComprasDefault;
+    selMesResumenCompras.addEventListener('change', function () { stateCompras.mesResumen = selMesResumenCompras.value === 'todos' ? 'todos' : Number(selMesResumenCompras.value); renderKpisCompras(); });
+    document.getElementById('btnLimpiarFiltrosResumenCompras').addEventListener('click', function () {
+      stateCompras.mesResumen = 'todos'; selMesResumenCompras.value = 'todos'; renderKpisCompras();
+    });
+
+    var selAnioFacturas = document.getElementById('filtroAnioFacturas');
+    aniosFacturas.forEach(function (a) {
+      var o = document.createElement('option'); o.value = a; o.textContent = a; selAnioFacturas.appendChild(o);
+    });
+    stateCompras.anioFacturas = anioOperativoCompras;
+    selAnioFacturas.value = anioOperativoCompras;
+    selAnioFacturas.addEventListener('change', function () { stateCompras.anioFacturas = Number(selAnioFacturas.value); actualizarDesgloseFacturas(); });
+
+    FILTROS_FACTURA_CAMPOS.forEach(function (f) {
+      var sel = document.getElementById(f.selectId);
+      var optTodas = document.createElement('option'); optTodas.value = 'Todas'; optTodas.textContent = 'Todas'; sel.appendChild(optTodas);
+      valoresUnicosFacturas(f.campo).forEach(function (v) {
+        var o = document.createElement('option'); o.value = v; o.textContent = tituloDesdeMayusculas(v); sel.appendChild(o);
+      });
+      sel.value = 'Todas';
+      sel.addEventListener('change', function () { stateCompras.filtros[f.campo] = sel.value; actualizarDesgloseFacturas(); });
+    });
+
+    document.getElementById('btnLimpiarFiltrosFacturas').addEventListener('click', function () {
+      FILTROS_FACTURA_CAMPOS.forEach(function (f) {
+        stateCompras.filtros[f.campo] = 'Todas';
+        document.getElementById(f.selectId).value = 'Todas';
+      });
+      actualizarDesgloseFacturas();
+    });
+
+    var selDesglose = document.getElementById('filtroDesgloseFactura');
+    DESGLOSE_FACTURA_CAMPOS.forEach(function (d) {
+      var o = document.createElement('option'); o.value = d.campo; o.textContent = d.label; selDesglose.appendChild(o);
+    });
+    selDesglose.value = stateCompras.desglosePor;
+    selDesglose.addEventListener('change', function () { stateCompras.desglosePor = selDesglose.value; actualizarDesgloseFacturas(); });
+
+    renderComprasAll();
+
+    // --- Módulo Costos: mismo criterio de "mes por defecto" que Sueldos (el
+    // último mes del año operativo con costo de sueldos cargado) ---
+    var selMesCostos = document.getElementById('filtroMesCostos');
+    MESES_DISPLAY.forEach(function (m, i) {
+      var o = document.createElement('option'); o.value = i; o.textContent = m; selMesCostos.appendChild(o);
+    });
+    stateCostos.mesResumen = mesResumenDefault;
+    selMesCostos.value = mesResumenDefault;
+    selMesCostos.addEventListener('change', function () { stateCostos.mesResumen = selMesCostos.value === 'todos' ? 'todos' : Number(selMesCostos.value); renderKpisCostos(); renderComposicionCosto(); });
+    document.getElementById('btnLimpiarFiltrosCostos').addEventListener('click', function () {
+      stateCostos.mesResumen = 'todos'; selMesCostos.value = 'todos'; renderKpisCostos(); renderComposicionCosto();
+    });
+    renderKpisCostos();
+    renderComposicionCosto();
+    renderCostoPorMes();
+
+    wireTableToggle();
+    setStatus(true, 'Conectado — datos al día');
+    var horaCarga = new Date().toLocaleString('es-AR');
+    document.getElementById('footerTimestamp').textContent = horaCarga;
+    document.getElementById('footerTimestampCompras').textContent = horaCarga;
+    document.getElementById('footerTimestampCostos').textContent = horaCarga;
+    renderAll();
+  }).catch(function (err) {
+    setStatus(false, 'Error al conectar: ' + err.message);
+    console.error(err);
+  });
+
+  // --- Módulo Ventas: pedido APARTE, fuera del Promise.all de arriba ---
+  // Es una fuente de datos nueva, recién conectada, todavía no probada contra
+  // el deployment real. Si la metiéramos en el mismo Promise.all y fallara,
+  // se rompía TODO el tablero (Sueldos y Compras incluidos) — el mismo
+  // problema de concurrencia que motivó separar los 7 pedidos originales en
+  // 2. No vale la pena arriesgar Sueldos/Compras (ya probados) por una fuente
+  // nueva: si Ventas falla, el resto del tablero sigue funcionando normal y
+  // solo el panel de Ventas muestra su propio error de conexión.
+  fetchRecurso('bundle', 'ventas', null, {
+    onReintentar: function (msg) {
+      var el = document.getElementById('ventasConexionMsg');
+      if (el) el.textContent = msg;
+    }
+  }).then(function (data) {
+    RAW.remitosVentas = normalizarRemitosVentas(data.remitos);
+    RAW.facturasVentas = normalizarFacturasVentas(data.facturas);
+    renderVentasConexion(true);
+    poblarFiltrosVentas();
+    renderVentasFiltrado();
+    document.getElementById('footerTimestampVentas').textContent = new Date().toLocaleString('es-AR');
+  }).catch(function (err) {
+    console.error(err);
+    renderVentasConexion(false, err.message);
+  });
+
+  function normalizarEvolucionDotacion(arr) {
+    return (arr || []).map(function (r) {
+      return { anio: num(r.anio), mesIdx: num(r.mes) - 1, altas: num(r.altas), bajas: num(r.bajas) };
+    });
+  }
+  function normalizarCostoMensual(arr) {
+    return (arr || []).map(function (r) {
+      return {
+        anio: num(r['Año']), mesIdx: mesIndex(r['Mes']),
+        total: num(r['TOTAL MOVIMIENTO SUELDOS']),
+        transferido: num(r['Total Transferido Sueldos']),
+        f931: num(r['DDJJ F931']), uocra: num(r['UOCRA']), ieric: num(r['IERIC']), fodeco: num(r['FODECO'])
+      };
+    }).filter(function (r) { return r.total > 0 && r.mesIdx >= 0; });
+  }
+  function normalizarErogacion(arr) {
+    return (arr || []).map(function (r) {
+      return { anio: num(r.anio), mesIdx: mesIndex(r.mes), acuerdo: (r.acuerdo || '').toString().trim().toUpperCase(), valor: num(r.erogacion_sin_contribuciones) };
+    }).filter(function (r) { return r.mesIdx >= 0; });
+  }
+  function normalizarHoras(arr) {
+    return (arr || []).map(function (r) {
+      return {
+        anio: num(r.anio), mesIdx: mesIndex(r.mes), acuerdo: (r.acuerdo || '').toString().trim().toUpperCase(),
+        persona: tituloDesdeMayusculas(r.persona), categoria: normalizarCategoria(r.categoria),
+        normales: num(r.horas_normales), h50: num(r.horas_50), h100: num(r.horas_100), total: num(r.horas_totales)
+      };
+    }).filter(function (r) { return r.mesIdx >= 0; });
+  }
+  function normalizarPrecios(arr) {
+    return (arr || []).map(function (r) {
+      return {
+        anio: num(r['Año']), mesIdx: mesIndex(r['Mes']), categoria: normalizarCategoria(r['Categoría Sueldos']),
+        basico: r['Precio Hora Básico UOCRA'] === '' || r['Precio Hora Básico UOCRA'] == null ? null : num(r['Precio Hora Básico UOCRA']),
+        bruto: r['Bruto de IVC'] === '' || r['Bruto de IVC'] == null ? null : num(r['Bruto de IVC'])
+      };
+    }).filter(function (r) { return r.mesIdx >= 0 && r.basico !== null && r.basico > 0; });
+  }
+
+  // ============================================================
+  // Módulo Compras — normalización de REGISTRO DE FACTURAS
+  // ============================================================
+  // Todo el cálculo (KPIs, filtros, el gráfico mensual) se hace acá del lado
+  // del tablero a partir del crudo, igual que costo_mensual/precios/horas.
+  function trimStr(v) { return (v === null || v === undefined) ? '' : v.toString().trim(); }
+
+  function normalizarFacturas(arr) {
+    return (arr || []).map(function (r) {
+      var fecha = r['Fecha de Emisión'] ? new Date(r['Fecha de Emisión']) : null;
+      var valida = fecha instanceof Date && !isNaN(fecha.getTime());
+      return {
+        idFactura: trimStr(r['ID Factura']),
+        fecha: valida ? fecha : null,
+        anio: valida ? fecha.getFullYear() : null,
+        mesIdx: valida ? fecha.getMonth() : null,
+        proveedor: trimStr(r['Proveedor']),
+        cuit: trimStr(r['CUIT/CUIL Proveedor']),
+        tipoComprobante: trimStr(r['Tipo de Comprobante']),
+        subcategoria: trimStr(r['Subcategoría de Factura']),
+        categoria: trimStr(r['Categoría']),
+        categoriaMacro: trimStr(r['Categoría Macro']),
+        tipoItem: trimStr(r['Tipo de Item']),
+        imputacionGestion: trimStr(r['Imputación Gestión']),
+        flujoFondos: trimStr(r['Flujo de Fondos']),
+        comportamientoCosto: trimStr(r['Comportamiento del Costo']),
+        area: trimStr(r['Area']),
+        montoNeto: num(r['Monto Neto de la Factura']),
+        iva: num(r['IVA']),
+        otrosImpuestos: num(r['Otros Impuestos y Percepciones']),
+        total: num(r['Total Facturación']),
+        estadoPago: trimStr(r['Estado de Pago']),
+        observaciones: trimStr(r['Observaciones'])
+      };
+    }).filter(function (f) { return f.fecha !== null; });
+  }
+
+  // ============================================================
+  // Módulo Ventas — normalización de REGISTRO DE REMITOS y REGISTRO DE
+  // FACTURAS VENTAS
+  // ============================================================
+  // Dos hojas, dos niveles de información distintos (ver comentario en
+  // Code.gs): Remitos = detalle de producto entregado, sin datos económicos.
+  // Facturas Ventas = una fila por factura, con las variables económicas —
+  // ahí sí hay que sumar con cuidado porque una factura consolida varios
+  // remitos. Por ahora solo se normaliza el crudo; los indicadores que
+  // combinen ambas fuentes (evitando doble conteo) se arman en el próximo paso.
+  function normalizarRemitosVentas(arr) {
+    return (arr || []).map(function (r) {
+      var fecha = r['FECHA DE REMITO'] ? new Date(r['FECHA DE REMITO']) : null;
+      var valida = fecha instanceof Date && !isNaN(fecha.getTime());
+      return {
+        idRemito: trimStr(r['ID REMITO']),
+        fecha: valida ? fecha : null,
+        anio: valida ? fecha.getFullYear() : null,
+        mesIdx: valida ? fecha.getMonth() : null,
+        obra: trimStr(r['OBRA']),
+        cliente: trimStr(r['CLIENTE']),
+        cantidad: num(r['CANTIDAD']),
+        producto: trimStr(r['PRODUCTO']),
+        tamano: num(r['TAMAÑO']),
+        rotura: trimStr(r['ROTURA']),
+        descripcion: trimStr(r['DESCRIPCIÓN DEL PRODUCTO']),
+        codigo: trimStr(r['CÓDIGO']),
+        observaciones: trimStr(r['OBSERVACIONES']),
+        nFactura: trimStr(r['N° FACTURA']) || null
+      };
+    // Descarta remitos anulados (Obra/Cliente = "ANULADA") y filas placeholder
+    // sin producto cargado (ej. remitos de balanza/pesaje) — ninguno de los
+    // dos casos tiene Producto cargado, así que un solo filtro cubre ambos.
+    }).filter(function (r) { return r.producto; });
+  }
+
+  function normalizarFacturasVentas(arr) {
+    return (arr || []).map(function (r) {
+      var fechaFactura = r['FECHA FACTURA'] ? new Date(r['FECHA FACTURA']) : null;
+      var validaFactura = fechaFactura instanceof Date && !isNaN(fechaFactura.getTime());
+      var fechaRemito = r['FECHA REMITO'] ? new Date(r['FECHA REMITO']) : null;
+      var validaRemito = fechaRemito instanceof Date && !isNaN(fechaRemito.getTime());
+      return {
+        nFactura: trimStr(r['N° FACTURA']),
+        fechaRemito: validaRemito ? fechaRemito : null,
+        fechaFactura: validaFactura ? fechaFactura : null,
+        anio: validaFactura ? fechaFactura.getFullYear() : null,
+        mesIdx: validaFactura ? fechaFactura.getMonth() : null,
+        obra: trimStr(r['OBRA']),
+        cliente: trimStr(r['CLIENTE']),
+        // Texto concatenado ("PO 8,5 R 3000; PO 10 R 3900") cuando la factura
+        // junta remitos de productos distintos — no sirve para desglose por
+        // producto, solo para mostrar/debug. Para desglose usar Remitos.
+        producto: trimStr(r['PRODUCTO']),
+        subtotal: num(r['SUBTOTAL']),
+        iva: num(r['IVA']),
+        subtotalConIva: num(r['SUBTOTAL C/ IVA']),
+        anticipo: num(r['ANTICIPO']),
+        // Ojo: el encabezado real en el Sheet es "NOTA DE CREDITO", sin tilde
+        // (a diferencia de como se suele escribir) — hay que leerlo tal cual.
+        notaCredito: num(r['NOTA DE CREDITO']),
+        total: num(r['TOTAL']),
+        observacion: trimStr(r['OBSERVACIÓN'])
+      };
+    // Descarta las filas plantilla sin usar (fórmulas que dan $0,00 pero
+    // todavía no tienen N° Factura cargado).
+    }).filter(function (f) { return f.nFactura; });
+  }
+
+  function renderVentasConexion(ok, errMsg) {
+    var wrap = document.getElementById('kpiRowVentasConexion');
+    var msgEl = document.getElementById('ventasConexionMsg');
+    if (!ok) {
+      if (msgEl) { msgEl.textContent = 'No se pudo conectar con la fuente de Ventas: ' + errMsg; msgEl.style.color = 'var(--status-critical)'; }
+      if (wrap) wrap.innerHTML = '';
+      return;
+    }
+    if (msgEl) { msgEl.textContent = 'Conectado — datos al día.'; msgEl.style.color = ''; }
+
+    var remitos = RAW.remitosVentas || [];
+    var facturas = RAW.facturasVentas || [];
+    var remitosVinculados = remitos.filter(function (r) { return r.nFactura; }).length;
+    var fechasRemitos = remitos.map(function (r) { return r.fecha; }).filter(Boolean);
+    var ultimoRemito = fechasRemitos.length ? new Date(Math.max.apply(null, fechasRemitos)) : null;
+    var fechasFacturas = facturas.map(function (f) { return f.fechaFactura; }).filter(Boolean);
+    var ultimaFactura = fechasFacturas.length ? new Date(Math.max.apply(null, fechasFacturas)) : null;
+
+    var tiles = [
+      { label: 'Remitos Cargados', value: formatNum(remitos.length), sub: 'Filas válidas de Registro de Remitos (sin anuladas ni vacías)' },
+      { label: 'Facturas Cargadas', value: formatNum(facturas.length), sub: 'Filas de Registro de Facturas Ventas con N° Factura' },
+      {
+        label: 'Remitos Vinculados a Factura', value: formatNum(remitosVinculados),
+        sub: remitos.length ? (remitosVinculados + ' de ' + remitos.length + ' remitos ya tienen N° Factura cargado') : '—'
+      },
+      { label: 'Último Remito Cargado', value: ultimoRemito ? ultimoRemito.toLocaleDateString('es-AR') : '—', sub: 'Fecha del remito más reciente' },
+      { label: 'Última Factura Cargada', value: ultimaFactura ? ultimaFactura.toLocaleDateString('es-AR') : '—', sub: 'Fecha de factura más reciente' }
+    ];
+    wrap.innerHTML = '';
+    tiles.forEach(function (t) { wrap.appendChild(kpiTileEl(t)); });
+  }
+
+  // ============================================================
+  // Ventas — Análisis de Productos Vendidos
+  // ============================================================
+  // Categoriza un remito según su DESCRIPCIÓN DEL PRODUCTO (columna I), que ya
+  // viene categorizada por la fórmula del Sheet (ver
+  // categorizacion-productos-tensión-rotura.md): "Poste Media Tensión Alta
+  // Rotura", "Cruceta Doble Tamaño Chico Rotura Baja", "Ménsula Simple...",
+  // "Vínculo Doble", "Loseta...", "Otros". Losetas y cualquier código no
+  // reconocido ("Otros" tal cual, o texto que no matchea ninguna familia) caen
+  // en "Otros" — la lista de categorías que pidió Rocío no incluye Losetas
+  // como familia propia.
+  var CATEGORIAS_PRODUCTOS_VENTAS = ['Postes de Alta Tensión', 'Postes de Media Tensión', 'Postes de Baja Tensión', 'Crucetas', 'Ménsulas', 'Vínculos', 'Otros'];
+  function categorizarProductoVentas(descripcion) {
+    var d = descripcion || '';
+    if (d.indexOf('Alta Tensión') !== -1) return 'Postes de Alta Tensión';
+    if (d.indexOf('Media Tensión') !== -1) return 'Postes de Media Tensión';
+    if (d.indexOf('Baja Tensión') !== -1) return 'Postes de Baja Tensión';
+    if (d.indexOf('Cruceta') !== -1) return 'Crucetas';
+    if (d.indexOf('Ménsula') !== -1) return 'Ménsulas';
+    if (d.indexOf('Vínculo') !== -1) return 'Vínculos';
+    return 'Otros';
+  }
+  function colorCategoriaProductoVentas(cat) {
+    if (cat === 'Postes de Alta Tensión') return COLOR_POSTES_ALTA;
+    if (cat === 'Postes de Media Tensión') return COLOR_POSTES_MEDIA;
+    if (cat === 'Postes de Baja Tensión') return COLOR_POSTES_BAJA;
+    if (cat === 'Crucetas') return COLOR_CRUCETAS;
+    if (cat === 'Ménsulas') return COLOR_MENSULAS;
+    if (cat === 'Vínculos') return COLOR_VINCULOS;
+    return COLOR_OTROS_FACTURAS;
+  }
+
+  // Familias del gráfico de Evolución: cada una define, cuando está
+  // seleccionada, en qué subcategorías se divide la columna apilada de cada
+  // mes. Postes reutiliza los mismos 3 colores del gráfico de categorías de
+  // arriba (misma identidad = mismo color en los dos gráficos). Crucetas,
+  // Ménsulas y Vínculos usan una rampa de un solo tono anclada en su propio
+  // color de familia, porque sus niveles internos (Simple/Doble/Triple) sí
+  // tienen un orden real y acá nunca conviven en pantalla con otras familias.
+  // Otros no tiene subcategorías (es el resto sin clasificar) — se muestra
+  // como una sola serie.
+  var FAMILIAS_EVOLUCION_VENTAS = {
+    postes: {
+      label: 'Postes', filtro: function (cat) { return cat.indexOf('Postes de') === 0; },
+      // match toma la DESCRIPCIÓN (igual que las otras familias), no la
+      // categoría ya resuelta — mismo criterio que categorizarProductoVentas.
+      sub: [
+        { nombre: 'Alta Tensión', color: COLOR_POSTES_ALTA, match: function (d) { return d.indexOf('Alta Tensión') !== -1; } },
+        { nombre: 'Media Tensión', color: COLOR_POSTES_MEDIA, match: function (d) { return d.indexOf('Media Tensión') !== -1; } },
+        { nombre: 'Baja Tensión', color: COLOR_POSTES_BAJA, match: function (d) { return d.indexOf('Baja Tensión') !== -1; } }
+      ]
+    },
+    crucetas: {
+      label: 'Crucetas', filtro: function (cat) { return cat === 'Crucetas'; },
+      sub: [
+        { nombre: 'Simple', color: RAMPA_CRUCETAS[0], match: function (d) { return d.indexOf('Cruceta Simple') !== -1; } },
+        { nombre: 'Doble', color: RAMPA_CRUCETAS[1], match: function (d) { return d.indexOf('Cruceta Doble') !== -1; } },
+        { nombre: 'Triple', color: RAMPA_CRUCETAS[2], match: function (d) { return d.indexOf('Cruceta Triple') !== -1; } }
+      ]
+    },
+    mensulas: {
+      label: 'Ménsulas', filtro: function (cat) { return cat === 'Ménsulas'; },
+      sub: [
+        { nombre: 'Simple', color: RAMPA_MENSULAS[0], match: function (d) { return d.indexOf('Ménsula Simple') !== -1; } },
+        { nombre: 'Doble', color: RAMPA_MENSULAS[1], match: function (d) { return d.indexOf('Ménsula Doble') !== -1; } }
+      ]
+    },
+    vinculos: {
+      label: 'Vínculos', filtro: function (cat) { return cat === 'Vínculos'; },
+      sub: [
+        { nombre: 'Doble', color: RAMPA_VINCULOS[0], match: function (d) { return d.indexOf('Vínculo Doble') !== -1; } },
+        { nombre: 'Triple', color: RAMPA_VINCULOS[1], match: function (d) { return d.indexOf('Vínculo Triple') !== -1; } }
+      ]
+    },
+    otros: {
+      label: 'Otros', filtro: function (cat) { return cat === 'Otros'; },
+      sub: null // sin desglose: una sola serie
+    }
+  };
+
+  // Años con remitos cargados, para el <select> de Año.
+  function coleccionAniosVentas() {
+    var set = {};
+    (RAW.remitosVentas || []).forEach(function (r) { if (r.anio != null) set[r.anio] = true; });
+    var arr = Object.keys(set).map(Number).sort(function (a, b) { return a - b; });
+    return arr.length ? arr : [new Date().getFullYear()];
+  }
+
+  function poblarFiltrosVentas() {
+    var aniosVentas = coleccionAniosVentas();
+    anioOperativoVentas = aniosVentas[aniosVentas.length - 1];
+    stateVentas.anio = anioOperativoVentas;
+    stateVentas.meses = null; // todos los meses seleccionados por defecto
+
+    var selAnio = document.getElementById('filtroAnioVentas');
+    selAnio.innerHTML = '';
+    aniosVentas.forEach(function (a) {
+      var o = document.createElement('option'); o.value = a; o.textContent = a; selAnio.appendChild(o);
+    });
+    selAnio.value = anioOperativoVentas;
+    selAnio.addEventListener('change', function () {
+      stateVentas.anio = Number(selAnio.value);
+      stateVentas.meses = null; // al cambiar de año, reiniciar a "todos los meses"
+      pintarChipsMesesVentas();
+      renderVentasFiltrado();
+    });
+
+    pintarChipsMesesVentas();
+
+    var btnTodos = document.getElementById('btnMesesVentasTodos');
+    if (btnTodos) {
+      btnTodos.addEventListener('click', function () {
+        stateVentas.meses = null;
+        pintarChipsMesesVentas();
+        renderVentasFiltrado();
+      });
+    }
+
+    // Tabs de familia para el gráfico de Evolución (Postes/Crucetas/
+    // Ménsulas/Vínculos/Otros) — selección única, mismo patrón que las tabs
+    // "UOCRA / IVC" de Sueldos.
+    var tabsFamilia = document.querySelectorAll('[data-familia-tab]');
+    tabsFamilia.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        tabsFamilia.forEach(function (t) { t.classList.toggle('active', t === tab); });
+        stateVentas.familiaEvolucion = tab.getAttribute('data-familia-tab');
+        renderEvolucionVentas();
+      });
+    });
+
+    var btnLimpiarVentas = document.getElementById('btnLimpiarFiltrosVentas');
+    if (btnLimpiarVentas) {
+      btnLimpiarVentas.addEventListener('click', function () {
+        stateVentas.anio = anioOperativoVentas;
+        selAnio.value = anioOperativoVentas;
+        stateVentas.meses = null;
+        pintarChipsMesesVentas();
+        renderVentasFiltrado();
+      });
+    }
+  }
+
+  // Vuelve a dibujar todo lo que depende del filtro de Año/Meses de Ventas
+  // (los dos gráficos de la sección "Análisis de Productos Vendidos").
+  function renderVentasFiltrado() {
+    renderAnalisisProductosVentas();
+    renderEvolucionVentas();
+  }
+
+  // Dibuja los chips de mes (multi-selección) para el año elegido y engancha
+  // el toggle individual de cada uno. Se repinta cada vez que cambia el año
+  // (para reflejar el estado "todos seleccionados") o la selección misma.
+  function pintarChipsMesesVentas() {
+    var wrap = document.getElementById('filtroMesesVentas');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    var seleccionActiva = stateVentas.meses; // null = todos
+    var btnTodos = document.getElementById('btnMesesVentasTodos');
+    if (btnTodos) btnTodos.classList.toggle('active', !seleccionActiva);
+    MESES_CORTO.forEach(function (m, i) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn-ghost' + (!seleccionActiva || seleccionActiva.indexOf(i) !== -1 ? ' active' : '');
+      btn.textContent = m;
+      btn.addEventListener('click', function () {
+        var actuales;
+        if (stateVentas.meses === null) {
+          // Estábamos en "todos": el primer click aísla ese mes en vez de
+          // sacarlo del conjunto completo (que dejaría los otros 11 puestos).
+          actuales = [i];
+        } else {
+          actuales = stateVentas.meses.slice();
+          var pos = actuales.indexOf(i);
+          if (pos === -1) actuales.push(i); else actuales.splice(pos, 1);
+          actuales.sort(function (a, b) { return a - b; });
+        }
+        // Si quedaron los 12 meses marcados, volvemos a representarlo como "todos".
+        stateVentas.meses = actuales.length === 12 ? null : actuales;
+        pintarChipsMesesVentas();
+        renderVentasFiltrado();
+      });
+      wrap.appendChild(btn);
+    });
+  }
+
+  function renderAnalisisProductosVentas() {
+    var contenedor = document.getElementById('chartProductosVentas');
+    if (!contenedor) return; // todavía no se cargaron los datos de Ventas
+    var anio = stateVentas.anio;
+    var meses = stateVentas.meses; // null = todos
+    var delPeriodo = (RAW.remitosVentas || []).filter(function (r) {
+      if (r.anio !== anio) return false;
+      if (meses && meses.indexOf(r.mesIdx) === -1) return false;
+      return true;
+    });
+
+    var totalesPorCategoria = {};
+    CATEGORIAS_PRODUCTOS_VENTAS.forEach(function (c) { totalesPorCategoria[c] = 0; });
+    delPeriodo.forEach(function (r) {
+      var cat = categorizarProductoVentas(r.descripcion);
+      totalesPorCategoria[cat] = (totalesPorCategoria[cat] || 0) + r.cantidad;
+    });
+
+    var items = CATEGORIAS_PRODUCTOS_VENTAS.map(function (cat) {
+      return { label: cat, value: totalesPorCategoria[cat], color: colorCategoriaProductoVentas(cat) };
+    }).filter(function (it) { return it.value > 0; });
+
+    renderHorizontalBar(contenedor, items, { valueFormatter: formatNum, valueLabel: 'Unidades', rowHeight: 46, barThickness: 0.7, leftMargin: 190 });
+    renderSimpleTable(document.getElementById('chartProductosVentas-table'), ['Categoría', 'Unidades'],
+      items.map(function (it) { return [it.label, formatNum(it.value)]; }));
+  }
+
+  // Evolución mensual de la familia elegida (Postes/Crucetas/Ménsulas/
+  // Vínculos/Otros): columnas apiladas por mes — si la familia tiene
+  // subcategorías (Postes por Tensión, o el tipo Simple/Doble/Triple de
+  // Crucetas/Ménsulas/Vínculos), la columna de cada mes se divide en esas
+  // subcategorías; Otros no tiene desglose y se muestra como una sola serie.
+  // Respeta el mismo filtro de Año y Meses que "Unidades Vendidas por
+  // Categoría", de arriba.
+  function renderEvolucionVentas() {
+    var contenedor = document.getElementById('chartEvolucionVentas');
+    if (!contenedor) return; // todavía no se cargaron los datos de Ventas
+    var anio = stateVentas.anio;
+    var mesesSeleccionados = stateVentas.meses; // null = todos
+    var familia = FAMILIAS_EVOLUCION_VENTAS[stateVentas.familiaEvolucion] || FAMILIAS_EVOLUCION_VENTAS.postes;
+
+    var meses = mesesSeleccionados ? mesesSeleccionados.slice() : MESES_CORTO.map(function (_, i) { return i; });
+    var delFamilia = (RAW.remitosVentas || []).filter(function (r) {
+      if (r.anio !== anio) return false;
+      if (meses.indexOf(r.mesIdx) === -1) return false;
+      return familia.filtro(categorizarProductoVentas(r.descripcion));
+    });
+
+    var cats = meses.map(function (m) { return MESES_CORTO[m]; });
+    var series;
+    if (familia.sub) {
+      series = familia.sub.map(function (s) {
+        return {
+          name: s.nombre, color: s.color,
+          values: meses.map(function (m) {
+            return delFamilia.filter(function (r) { return r.mesIdx === m && s.match(r.descripcion); })
+              .reduce(function (acc, r) { return acc + r.cantidad; }, 0);
+          })
+        };
+      });
+    } else {
+      series = [{
+        name: familia.label, color: COLOR_OTROS_FACTURAS,
+        values: meses.map(function (m) {
+          return delFamilia.filter(function (r) { return r.mesIdx === m; }).reduce(function (acc, r) { return acc + r.cantidad; }, 0);
+        })
+      }];
+    }
+
+    renderBarChart(contenedor, cats, series, { stacked: true, valueFormatter: formatNum, tooltipFormatter: formatNum });
+
+    var cols = ['Mes'].concat(series.map(function (s) { return s.name; })).concat(series.length > 1 ? ['Total'] : []);
+    var trows = meses.map(function (m, i) {
+      var row = [cats[i]].concat(series.map(function (s) { return formatNum(s.values[i]); }));
+      if (series.length > 1) {
+        var total = series.reduce(function (acc, s) { return acc + s.values[i]; }, 0);
+        row.push(formatNum(total));
+      }
+      return row;
+    });
+    renderSimpleTable(document.getElementById('chartEvolucionVentas-table'), cols, trows);
+  }
+
+  // Valores distintos presentes en un campo de facturas, ordenados
+  // alfabéticamente, para poblar los <select> de filtro dinámicamente
+  // (así no hay que hardcodear categorías/áreas que pueden cambiar en el Sheet).
+  function valoresUnicosFacturas(campo) {
+    var set = {};
+    RAW.facturas.forEach(function (f) { if (f[campo]) set[f[campo]] = true; });
+    return Object.keys(set).sort(function (a, b) { return a.localeCompare(b, 'es'); });
+  }
+
+  // Años con movimientos de altas/bajas (incluye antigüedad histórica de gente
+  // activa) — solo se usa para el selector propio del gráfico de rotación.
+  function coleccionAniosAltasBajas() {
+    var set = {};
+    RAW.evolucionDotacion.forEach(function (r) { set[r.anio] = true; });
+    var arr = Object.keys(set).map(Number).sort(function (a, b) { return a - b; });
+    return arr.length ? arr : [new Date().getFullYear()];
+  }
+
+  // ============================================================
+  // Render
+  // ============================================================
+  function renderAll() {
+    renderKpis();
+    renderDotacionCategoria();
+    renderAltasBajas();
+    renderCostoErogacion();
+    renderHorasTodo();
+    renderPrecios();
+  }
+
+  function renderCostoErogacion() {
+    renderCostoMensual();
+    renderErogacionMensual();
+    renderErogacionQuincenal();
+    renderCostoRealPorHora();
+  }
+
+  function renderHorasTodo() {
+    renderHorasKpis();
+    renderHorasMes();
+    renderHorasCategoria();
+    renderHorasPersona();
+  }
+
+  var MES_FEBRERO = 1; // índice 0=Enero
+
+  // Texto descriptivo de una variación: "Sin cambios vs. mes anterior",
+  // "+3 personas vs. mes anterior", "−12 personas vs. Febrero", etc.
+  // singular/plural concuerda con la unidad (persona/personas, hora/horas).
+  function formatDeltaTexto(n, singular, plural, comparativo) {
+    if (n === null || n === undefined) return null;
+    n = Math.round(n);
+    if (n === 0) return 'Sin cambios ' + comparativo;
+    var abs = Math.abs(n);
+    var palabra = abs === 1 ? singular : plural;
+    var signo = n > 0 ? '+' : '−';
+    return signo + formatNum(abs) + ' ' + palabra + ' ' + comparativo;
+  }
+
+  // Misma idea que formatDeltaTexto pero para montos en pesos (Costo Total,
+  // Precio Categoría): "+$7.000.000 respecto del mes anterior", etc.
+  function formatDeltaMoney(n, comparativo) {
+    if (n === null || n === undefined) return null;
+    n = Math.round(n);
+    if (n === 0) return 'Sin cambios ' + comparativo;
+    var signo = n > 0 ? '+' : '−';
+    return signo + formatMoney(Math.abs(n)) + ' ' + comparativo;
+  }
+
+  // Reconstruye el cambio neto de dotación (altas - bajas) de un mes puntual,
+  // a partir de evolución de altas y bajas (misma fuente que ese gráfico).
+  function netChangePersonal(anio, mesIdx) {
+    var f = RAW.evolucionDotacion.find(function (r) { return r.anio === anio && r.mesIdx === mesIdx; });
+    return f ? (f.altas - f.bajas) : 0;
+  }
+
+  // Suma los cambios netos de los meses (mesDesdeExclusive, mesHastaInclusive]
+  // del año operativo — se usa tanto para reconstruir dotación de un mes
+  // pasado como para comparar contra Febrero.
+  function sumNetChangeMeses(anio, mesDesdeExclusive, mesHastaInclusive) {
+    var s = 0;
+    for (var m = mesDesdeExclusive + 1; m <= mesHastaInclusive; m++) s += netChangePersonal(anio, m);
+    return s;
+  }
+
+  // Reconstruye la dotación activa al cierre de cualquier (año, mes) con
+  // datos en evolución de altas y bajas, partiendo de la dotación real de
+  // hoy (RAW.resumenDotacion.total_activos) y sumando/restando los cambios
+  // netos mes a mes — igual que personalAlFinDeMes(), pero sin acotarse al
+  // año operativo, para poder usarse en el gráfico de Altas y Bajas que
+  // tiene su propio filtro de año.
+  function personalAlFinDeMesGlobal(targetAnio, targetMesIdx) {
+    var rd = RAW.resumenDotacion || {};
+    var total = rd.total_activos || 0;
+    var hoy = new Date();
+    function clave(a, m) { return a * 12 + m; }
+    var claveObjetivo = clave(targetAnio, targetMesIdx);
+    var claveHoy = clave(hoy.getFullYear(), hoy.getMonth());
+    if (claveObjetivo === claveHoy) return total;
+    var suma = 0;
+    if (claveObjetivo < claveHoy) {
+      RAW.evolucionDotacion.forEach(function (r) {
+        var k = clave(r.anio, r.mesIdx);
+        if (k > claveObjetivo && k <= claveHoy) suma += (r.altas - r.bajas);
+      });
+      return total - suma;
+    }
+    RAW.evolucionDotacion.forEach(function (r) {
+      var k = clave(r.anio, r.mesIdx);
+      if (k > claveHoy && k <= claveObjetivo) suma += (r.altas - r.bajas);
+    });
+    return total + suma;
+  }
+
+  function horasTotalMes(mesIdx) {
+    var sum = 0;
+    RAW.horas.forEach(function (r) { if (r.anio === anioOperativo && r.mesIdx === mesIdx) sum += r.total; });
+    return sum;
+  }
+
+  // Cantidad de personas distintas que cobraron algún sueldo en el año, hasta
+  // el mes indicado inclusive — a diferencia de la dotación vigente (foto de
+  // hoy), esto suma a cualquiera que haya pasado por la nómina en el período,
+  // incluidas bajas ya operadas. Usa RAW.horas (una fila por persona y
+  // quincena en SUELDOS Y APORTES) porque ahí ya tenemos el nombre de cada
+  // persona por período, sin necesidad de un dato nuevo del backend.
+  function personasDistintasEnAnio(mesTope) {
+    var vistas = {};
+    RAW.horas.forEach(function (r) {
+      if (r.anio === anioOperativo && r.mesIdx <= mesTope && r.persona) vistas[r.persona] = true;
+    });
+    return Object.keys(vistas).length;
+  }
+
+  // Precio vigente de una categoría "a la fecha" del mes elegido: el último
+  // valor cargado en Precios con mes <= mesRef (no usa precios futuros).
+  function precioAFinDeMes(cat, mesRef) {
+    var rows = RAW.precios.filter(function (r) {
+      return r.categoria === cat && r.basico !== null && r.anio === anioOperativo && r.mesIdx <= mesRef;
+    });
+    if (!rows.length) return null;
+    rows.sort(function (a, b) { return a.mesIdx - b.mesIdx; });
+    return rows[rows.length - 1];
+  }
+
+  // Leyenda fija de la barra de filtros de Sueldos ("Período seleccionado:
+  // Julio 2026" / "Período seleccionado: Todos los meses de 2026") — se
+  // actualiza cada vez que cambia el filtro de Mes único de la hoja.
+  function actualizarPeriodoSeleccionado() {
+    var el = document.getElementById('periodoSeleccionadoLabel');
+    if (!el) return;
+    if (state.mes === 'todos') {
+      el.textContent = 'Período seleccionado: Todos los meses de ' + anioOperativo;
+    } else {
+      el.textContent = 'Período seleccionado: ' + MESES_DISPLAY[state.mes] + ' ' + anioOperativo;
+    }
+  }
+
+  // Ícono de información (ⓘ) para el título de un KPI — hover o click muestran
+  // una burbuja con el texto de t.info. El listener a nivel de documento (que
+  // cierra cualquier burbuja abierta al hacer click afuera) se agrega una
+  // sola vez, la primera vez que se pide un ícono.
+  function kpiInfoIcon(texto) {
+    var wrap = document.createElement('span'); wrap.className = 'kpi-info';
+    var icon = document.createElement('span'); icon.className = 'kpi-info-icon';
+    // Símbolo "info" estándar de Material Icons (Google) — círculo con "i",
+    // el mismo que se usa en Gmail/Drive/Sheets para este tipo de aclaración.
+    icon.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">'
+      + '<path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>'
+      + '</svg>';
+    icon.setAttribute('tabindex', '0');
+    icon.setAttribute('role', 'button');
+    icon.setAttribute('aria-label', texto);
+    var bubble = document.createElement('div'); bubble.className = 'kpi-info-bubble'; bubble.textContent = texto;
+    icon.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      var wasOpen = wrap.classList.contains('open');
+      document.querySelectorAll('.kpi-info.open').forEach(function (o) { o.classList.remove('open'); });
+      if (!wasOpen) wrap.classList.add('open');
+    });
+    wrap.appendChild(icon); wrap.appendChild(bubble);
+    if (!window.__kpiInfoOutsideClickWired) {
+      window.__kpiInfoOutsideClickWired = true;
+      document.addEventListener('click', function () {
+        document.querySelectorAll('.kpi-info.open').forEach(function (o) { o.classList.remove('open'); });
+      });
+    }
+    return wrap;
+  }
+
+  function renderKpis() {
+    var wrap = document.getElementById('kpiRow');
+    wrap.innerHTML = '';
+    var rd = RAW.resumenDotacion || {};
+    var costoAnio = RAW.costoMensual.filter(function (r) { return r.anio === anioOperativo; });
+    var ultimoConDatos = costoAnio[costoAnio.length - 1];
+    var esTodos = state.mes === 'todos';
+    var mesRef = (!esTodos && state.mes !== null) ? state.mes : (ultimoConDatos ? ultimoConDatos.mesIdx : new Date().getMonth());
+    var mesRefNombre = MESES_DISPLAY[mesRef];
+    var costoMesRef = costoAnio.find(function (r) { return r.mesIdx === mesRef; });
+
+    var hoy = new Date();
+    var anioReal = hoy.getFullYear(), mesReal = hoy.getMonth();
+
+    // --- Personal total + variación, reconstruida a partir de altas y bajas ---
+    function personalAlFinDeMes(m) {
+      var total = rd.total_activos || 0;
+      if (anioOperativo !== anioReal) return total; // caso borde: año operativo distinto del año real
+      if (m === mesReal) return total;
+      if (m < mesReal) return total - sumNetChangeMeses(anioOperativo, m, mesReal);
+      return total + sumNetChangeMeses(anioOperativo, mesReal, m);
+    }
+    var activoTotal = personalAlFinDeMes(mesRef);
+    // detail = línea corta de contexto (solo si hace falta aclarar algo);
+    // periodo = línea "Mes Año" (o el rango, para los acumulados) — mismo
+    // formato en todas las tarjetas de Resumen General.
+    var activoDetail = null;
+    var activoPeriodo = mesRefNombre + ' ' + anioOperativo;
+    var personalDeltas = [];
+    if (state.categoria !== 'Todas') {
+      var fcat = (rd.por_categoria || []).find(function (x) { return normalizarCategoria(x.categoria) === state.categoria; });
+      activoTotal = fcat ? fcat.cantidad : 0;
+      activoDetail = 'Categoría: ' + state.categoria + ' — dato actual, no varía por mes';
+      activoPeriodo = null;
+    } else if (esTodos) {
+      // Con "Todos los meses" seleccionado, Nómina Vigente deja de ser la
+      // foto de hoy (no tendría sentido mezclada con un rango) y pasa a
+      // contar personas distintas que cobraron sueldo en algún momento del
+      // año — activos y bajas ya operadas incluidos. No hay "respecto al mes
+      // anterior" que aplique a un conteo acumulado del año, así que no se
+      // arma la caja de comparación.
+      activoTotal = personasDistintasEnAnio(mesRef);
+      activoDetail = 'Personas distintas que pasaron por la nómina en el año';
+      activoPeriodo = 'Año completo ' + anioOperativo;
+    } else {
+      var vsMesAnterior = netChangePersonal(anioOperativo, mesRef);
+      var vsFebrero = mesRef >= MES_FEBRERO ? sumNetChangeMeses(anioOperativo, MES_FEBRERO, mesRef) : null;
+      personalDeltas.push(formatDeltaTexto(vsMesAnterior, 'persona', 'personas', 'respecto del mes anterior'));
+      if (vsFebrero !== null) personalDeltas.push(formatDeltaTexto(vsFebrero, 'persona', 'personas', 'respecto a Febrero ' + anioOperativo));
+      personalDeltas = personalDeltas.filter(Boolean);
+    }
+
+    // --- Horas trabajadas por toda la nómina + variación, para el mes elegido
+    // (o acumuladas Enero→mesRef si el filtro está en "Todos") ---
+    var horasActual, horasDeltas = [], horasPeriodo;
+    if (esTodos) {
+      horasActual = 0;
+      for (var mh = 0; mh <= mesRef; mh++) horasActual += horasTotalMes(mh);
+      horasPeriodo = 'Enero–' + mesRefNombre + ' ' + anioOperativo + ' (acumulado)';
+    } else {
+      horasActual = horasTotalMes(mesRef);
+      if (mesRef > 0) horasDeltas.push(formatDeltaTexto(horasActual - horasTotalMes(mesRef - 1), 'hora', 'horas', 'respecto del mes anterior'));
+      if (mesRef >= MES_FEBRERO) horasDeltas.push(formatDeltaTexto(horasActual - horasTotalMes(MES_FEBRERO), 'hora', 'horas', 'respecto a Febrero ' + anioOperativo));
+      horasDeltas = horasDeltas.filter(Boolean);
+      horasPeriodo = mesRefNombre + ' ' + anioOperativo;
+    }
+
+    // --- Altas y bajas del mes elegido / acumuladas Enero→mes elegido ---
+    var altasMesRef = 0, bajasMesRef = 0, altasAcum = 0, bajasAcum = 0;
+    RAW.evolucionDotacion.forEach(function (r) {
+      if (r.anio !== anioOperativo) return;
+      if (r.mesIdx === mesRef) { altasMesRef += r.altas; bajasMesRef += r.bajas; }
+      if (r.mesIdx <= mesRef) { altasAcum += r.altas; bajasAcum += r.bajas; }
+    });
+
+    // --- Costo Total: del mes elegido, o acumulado Enero→mesRef si "Todos" —
+    // con variación respecto al mes anterior / a Febrero cuando no es acumulado ---
+    var costoTotalValor, costoTotalLabel, costoTotalPeriodo, costoDeltas = [];
+    if (esTodos) {
+      var costoAcum = 0;
+      costoAnio.forEach(function (r) { if (r.mesIdx <= mesRef) costoAcum += r.total; });
+      costoTotalValor = formatMoney(costoAcum);
+      costoTotalLabel = 'Costo Laboral Total Acumulado';
+      costoTotalPeriodo = 'Enero–' + mesRefNombre + ' ' + anioOperativo;
+    } else {
+      costoTotalValor = costoMesRef ? formatMoney(costoMesRef.total) : '—';
+      costoTotalLabel = 'Costo Laboral Total';
+      costoTotalPeriodo = mesRefNombre + ' ' + anioOperativo;
+      if (costoMesRef && mesRef > 0) {
+        var costoMesAnterior = costoAnio.find(function (r) { return r.mesIdx === mesRef - 1; });
+        if (costoMesAnterior) costoDeltas.push(formatDeltaMoney(costoMesRef.total - costoMesAnterior.total, 'respecto del mes anterior'));
+      }
+      if (costoMesRef && mesRef >= MES_FEBRERO) {
+        var costoFebrero = costoAnio.find(function (r) { return r.mesIdx === MES_FEBRERO; });
+        if (costoFebrero) costoDeltas.push(formatDeltaMoney(costoMesRef.total - costoFebrero.total, 'respecto a Febrero ' + anioOperativo));
+      }
+      costoDeltas = costoDeltas.filter(Boolean);
+    }
+
+    // --- Costo Real por Hora Trabajada = Costo Laboral Total ÷ Horas Totales
+    // Trabajadas, del mismo período (mes elegido, o acumulado Enero→mesRef si
+    // "Todos") — variación calculada sobre el cociente en sí (no sobre el
+    // total ni sobre las horas por separado), respecto al mes anterior y a
+    // Febrero. En "Todos" no se arma caja de comparación, igual criterio que
+    // el resto de los KPIs acumulados de esta fila. ---
+    function costoPorHoraDeMes(mesIdx) {
+      var c = costoAnio.find(function (r) { return r.mesIdx === mesIdx; });
+      var h = horasTotalMes(mesIdx);
+      if (!c || !h) return null;
+      return c.total / h;
+    }
+    var costoRealHoraValor, costoRealHoraPeriodo, costoRealHoraDeltas = [];
+    if (esTodos) {
+      costoRealHoraValor = horasActual ? (costoAcum / horasActual) : null;
+      costoRealHoraPeriodo = 'Enero–' + mesRefNombre + ' ' + anioOperativo;
+    } else {
+      costoRealHoraValor = (costoMesRef && horasActual) ? (costoMesRef.total / horasActual) : null;
+      costoRealHoraPeriodo = mesRefNombre + ' ' + anioOperativo;
+      if (costoRealHoraValor !== null && mesRef > 0) {
+        var costoPorHoraAnterior = costoPorHoraDeMes(mesRef - 1);
+        if (costoPorHoraAnterior !== null) costoRealHoraDeltas.push(formatDeltaMoney(costoRealHoraValor - costoPorHoraAnterior, 'respecto del mes anterior'));
+      }
+      if (costoRealHoraValor !== null && mesRef >= MES_FEBRERO) {
+        var costoPorHoraFebrero = costoPorHoraDeMes(MES_FEBRERO);
+        if (costoPorHoraFebrero !== null) costoRealHoraDeltas.push(formatDeltaMoney(costoRealHoraValor - costoPorHoraFebrero, 'respecto a Febrero ' + anioOperativo));
+      }
+      costoRealHoraDeltas = costoRealHoraDeltas.filter(Boolean);
+    }
+
+    var tiles = [
+      { label: 'Nómina Vigente', value: formatNum(activoTotal), detail: activoDetail, periodo: activoPeriodo, deltaBox: personalDeltas },
+      {
+        label: esTodos ? 'Horas Totales Trabajadas (Año)' : 'Horas Totales Trabajadas', value: formatNum(horasActual),
+        periodo: horasPeriodo,
+        deltaBox: horasDeltas
+      },
+      { label: costoTotalLabel, value: costoTotalValor, periodo: costoTotalPeriodo, deltaBox: costoDeltas, info: 'Incluye sueldos + aportes + contribuciones.' },
+      {
+        label: esTodos ? 'Costo Real por Hora Trabajada (Año)' : 'Costo Real por Hora Trabajada',
+        value: costoRealHoraValor !== null ? formatMoney(costoRealHoraValor) : '—',
+        periodo: costoRealHoraPeriodo,
+        deltaBox: costoRealHoraDeltas,
+        info: 'Costo real por hora trabajada = Costo laboral total del mes / Horas totales trabajadas del mes'
+      }
+    ];
+    if (!esTodos) tiles.push({ label: 'Altas del Mes', value: formatNum(altasMesRef), detail: 'Altas registradas', periodo: mesRefNombre + ' ' + anioOperativo });
+    tiles.push({ label: 'Altas Acumuladas en el Año', value: formatNum(altasAcum), detail: 'Altas acumuladas', periodo: 'Enero–' + mesRefNombre + ' ' + anioOperativo });
+    if (!esTodos) tiles.push({ label: 'Bajas del Mes', value: formatNum(bajasMesRef), detail: 'Bajas registradas', periodo: mesRefNombre + ' ' + anioOperativo });
+    tiles.push({ label: 'Bajas Acumuladas en el Año', value: formatNum(bajasAcum), detail: 'Bajas acumuladas', periodo: 'Enero–' + mesRefNombre + ' ' + anioOperativo });
+    tiles.forEach(function (t) {
+      var d = document.createElement('div'); d.className = 'kpi-tile';
+      var l = document.createElement('div'); l.className = 'label';
+      var lTxt = document.createElement('span'); lTxt.textContent = t.label;
+      l.appendChild(lTxt);
+      if (t.info) l.appendChild(kpiInfoIcon(t.info));
+      var v = document.createElement('div'); v.className = 'value'; v.textContent = t.value;
+      d.appendChild(l); d.appendChild(v);
+      // Siempre se reserva el renglón de Detalle, aunque esté vacío — así el
+      // Mes/Año y la caja de comparación quedan a la misma altura en todas las
+      // tarjetas de la fila, tengan o no detalle (ej. Nómina Vigente y Horas
+      // Totales Trabajadas no tienen detalle, pero Costo Total y Precio sí).
+      var det = document.createElement('div'); det.className = 'sub'; det.textContent = t.detail || ' ';
+      if (!t.detail) det.setAttribute('aria-hidden', 'true');
+      d.appendChild(det);
+      if (t.periodo) {
+        var per = document.createElement('div'); per.className = 'periodo'; per.textContent = t.periodo;
+        d.appendChild(per);
+      }
+      if (t.deltaBox && t.deltaBox.length) {
+        var box = document.createElement('div'); box.className = 'kpi-delta-box';
+        t.deltaBox.forEach(function (txt) {
+          var row = document.createElement('div'); row.className = 'kpi-delta-row'; row.textContent = txt;
+          box.appendChild(row);
+        });
+        d.appendChild(box);
+      }
+      wrap.appendChild(d);
+    });
+  }
+
+  function emphasisOpacity(cat) {
+    return (state.categoria === 'Todas' || state.categoria === cat) ? 1 : 0.28;
+  }
+
+  function renderDotacionCategoria() {
+    var rd = RAW.resumenDotacion || {};
+    var items = CATEGORIAS_ORDEN.map(function (cat) {
+      var found = (rd.por_categoria || []).find(function (x) { return normalizarCategoria(x.categoria) === cat; });
+      return { label: cat, value: found ? found.cantidad : 0, color: catColorHex(cat), opacity: emphasisOpacity(cat) };
+    }).filter(function (i) { return i.value > 0; });
+    renderHorizontalBar(document.getElementById('chartDotacionCategoria'), items, { valueFormatter: formatNum, valueLabel: 'Personas', rowHeight: 62, barThickness: 0.78, leftMargin: 172 });
+  }
+
+  function renderAltasBajas() {
+    var anio = state.anioAltasBajas;
+    var meses = [];
+    for (var m = 0; m < 12; m++) meses.push(m);
+    var conDatos = meses.filter(function (m) {
+      return RAW.evolucionDotacion.some(function (r) { return r.anio === anio && r.mesIdx === m; });
+    });
+    if (!conDatos.length) return emptyState(document.getElementById('chartAltasBajas'));
+    var cats = conDatos.map(function (m) { return MESES_CORTO[m]; });
+    var altas = conDatos.map(function (m) {
+      var f = RAW.evolucionDotacion.find(function (r) { return r.anio === anio && r.mesIdx === m; });
+      return f ? f.altas : 0;
+    });
+    var bajas = conDatos.map(function (m) {
+      var f = RAW.evolucionDotacion.find(function (r) { return r.anio === anio && r.mesIdx === m; });
+      return f ? f.bajas : 0;
+    });
+    var dotacion = conDatos.map(function (m) { return personalAlFinDeMesGlobal(anio, m); });
+    var series = [
+      { name: 'Altas', color: cssVar('--sld-sage'), values: altas },
+      { name: 'Bajas', color: cssVar('--sld-blue'), values: bajas },
+      { name: 'Dotación', color: cssVar('--sld-slate'), values: dotacion }
+    ];
+    renderLineChart(document.getElementById('chartAltasBajas'), cats, series, { valueFormatter: formatNum, endLabels: false, strokeWidth: 3 });
+    renderSimpleTable(document.getElementById('chartAltasBajas-table'), ['Mes', 'Altas', 'Bajas', 'Dotación'],
+      conDatos.map(function (m, i) { return [cats[i], formatNum(altas[i]), formatNum(bajas[i]), formatNum(dotacion[i])]; }));
+  }
+
+  // TOTAL MOVIMIENTO SUELDOS es exactamente la suma de sus componentes, así que
+  // se muestra como una sola columna apilada por mes (no como una serie aparte:
+  // sumarla también duplicaría el valor). La altura total de cada columna, con
+  // su etiqueta arriba, ES el total del mes.
+  function renderCostoMensual() {
+    var rows = RAW.costoMensual.filter(function (r) { return r.anio === anioOperativo; }).sort(function (a, b) { return a.mesIdx - b.mesIdx; });
+    if (!rows.length) return emptyState(document.getElementById('chartCostoMensual'));
+    var cats = rows.map(function (r) { return MESES_CORTO[r.mesIdx]; });
+    var series = [
+      { name: 'Erogación sin contribuciones', color: cssVar('--sld-blue-light'), values: rows.map(function (r) { return r.transferido; }) },
+      { name: 'DDJJ F931', color: cssVar('--sld-navy'), values: rows.map(function (r) { return r.f931; }) },
+      { name: 'UOCRA', color: cssVar('--sld-sage'), values: rows.map(function (r) { return r.uocra; }) },
+      { name: 'IERIC', color: cssVar('--sld-pine'), values: rows.map(function (r) { return r.ieric; }) },
+      { name: 'FODECO', color: cssVar('--sld-blue'), values: rows.map(function (r) { return r.fodeco; }) }
+    ];
+    var emphasisIdx = emphasisIndexFor(rows.map(function (r) { return r.mesIdx; }));
+    renderBarChart(document.getElementById('chartCostoMensual'), cats, series, {
+      height: 340, stacked: true, stackTotals: true,
+      valueFormatter: formatCompact, tooltipFormatter: formatMoney, emphasisIndex: emphasisIdx
+    });
+    var cols = ['Mes', 'Erogación sin contribuciones', 'DDJJ F931', 'UOCRA', 'IERIC', 'FODECO', 'Total mov. sueldos'];
+    var trows = rows.map(function (r, i) {
+      return [cats[i], formatMoney(r.transferido), formatMoney(r.f931), formatMoney(r.uocra), formatMoney(r.ieric), formatMoney(r.fodeco), formatMoney(r.total)];
+    });
+    renderSimpleTable(document.getElementById('chartCostoMensual-table'), cols, trows);
+  }
+
+  // El filtro de Mes de la hoja Sueldos no reduce los gráficos "por mes"
+  // (perderían el sentido de tendencia): en cambio resalta esa columna y
+  // atenúa el resto.
+  function emphasisIndexForValue(mesIdxArray, mesSeleccionado) {
+    if (mesSeleccionado === 'todos') return null;
+    var idx = mesIdxArray.indexOf(Number(mesSeleccionado));
+    return idx === -1 ? null : idx;
+  }
+  function emphasisIndexFor(mesIdxArray) { return emphasisIndexForValue(mesIdxArray, state.mes); }
+
+  function renderErogacionMensual() {
+    var rows = RAW.erogacion.filter(function (r) { return r.anio === anioOperativo; });
+    var porMes = {};
+    rows.forEach(function (r) { porMes[r.mesIdx] = (porMes[r.mesIdx] || 0) + r.valor; });
+    var meses = Object.keys(porMes).map(Number).sort(function (a, b) { return a - b; });
+    if (!meses.length) return emptyState(document.getElementById('chartErogacionMensual'));
+    var cats = meses.map(function (m) { return MESES_CORTO[m]; });
+    var series = [{ name: 'Erogación', color: cssVar('--sld-teal'), values: meses.map(function (m) { return porMes[m]; }) }];
+    renderBarChart(document.getElementById('chartErogacionMensual'), cats, series, { valueFormatter: formatCompact, tooltipFormatter: formatMoney, emphasisIndex: emphasisIndexFor(meses) });
+  }
+
+  function renderErogacionQuincenal() {
+    var rows = RAW.erogacion.filter(function (r) { return r.anio === anioOperativo; });
+    var meses = Array.from(new Set(rows.map(function (r) { return r.mesIdx; }))).sort(function (a, b) { return a - b; });
+    if (!meses.length) return emptyState(document.getElementById('chartErogacionQuincenal'));
+    var cats = meses.map(function (m) { return MESES_CORTO[m]; });
+    function valorQ(m, q) {
+      var f = rows.find(function (r) { return r.mesIdx === m && r.acuerdo === q; });
+      return f ? f.valor : 0;
+    }
+    var series = [
+      { name: 'Q1', color: cssVar('--sld-blue-light'), values: meses.map(function (m) { return valorQ(m, 'Q1'); }) },
+      { name: 'Q2', color: cssVar('--sld-navy'), values: meses.map(function (m) { return valorQ(m, 'Q2'); }) }
+    ];
+    renderBarChart(document.getElementById('chartErogacionQuincenal'), cats, series, { valueFormatter: formatCompact, tooltipFormatter: formatMoney, emphasisIndex: emphasisIndexFor(meses) });
+  }
+
+  // Sin filtro de categoría — para gráficos que comparan categorías entre sí.
+  function horasFiltradasCompleto() {
+    return RAW.horas.filter(function (r) {
+      if (r.anio !== anioOperativo) return false;
+      if (state.mes !== 'todos' && r.mesIdx !== Number(state.mes)) return false;
+      if (state.horasQuincena !== 'todas' && r.acuerdo !== state.horasQuincena) return false;
+      return true;
+    });
+  }
+  // Con filtro de categoría — para KPIs y el detalle por persona.
+  function horasFiltradas() {
+    return horasFiltradasCompleto().filter(function (r) {
+      return state.categoria === 'Todas' || r.categoria === state.categoria;
+    });
+  }
+
+  function renderHorasKpis() {
+    var wrap = document.getElementById('kpiHorasRow');
+    wrap.innerHTML = '';
+    var rows = horasFiltradas();
+    var totales = rows.reduce(function (a, r) { a.normales += r.normales; a.h50 += r.h50; a.h100 += r.h100; a.total += r.total; return a; },
+      { normales: 0, h50: 0, h100: 0, total: 0 });
+    var tiles = [
+      { label: 'Horas Totales Trabajadas', value: formatNum(totales.total), sub: 'Período filtrado' },
+      { label: 'Horas Normales', value: formatNum(totales.normales), sub: totales.total ? Math.round(totales.normales / totales.total * 100) + '% del total' : '' },
+      { label: 'Horas Extra al 50%', value: formatNum(totales.h50), sub: totales.total ? Math.round(totales.h50 / totales.total * 100) + '% del total' : '' },
+      { label: 'Horas Extra al 100%', value: formatNum(totales.h100), sub: totales.total ? Math.round(totales.h100 / totales.total * 100) + '% del total' : '' }
+    ];
+    tiles.forEach(function (t) {
+      var d = document.createElement('div'); d.className = 'kpi-tile';
+      var l = document.createElement('div'); l.className = 'label'; l.textContent = t.label;
+      var v = document.createElement('div'); v.className = 'value'; v.textContent = t.value;
+      var s = document.createElement('div'); s.className = 'sub'; s.textContent = t.sub;
+      d.appendChild(l); d.appendChild(v); d.appendChild(s);
+      wrap.appendChild(d);
+    });
+  }
+
+  function renderHorasMes() {
+    var rows = RAW.horas.filter(function (r) {
+      if (r.anio !== anioOperativo) return false;
+      if (state.horasQuincena !== 'todas' && r.acuerdo !== state.horasQuincena) return false;
+      return true;
+    });
+    var meses = Array.from(new Set(rows.map(function (r) { return r.mesIdx; }))).sort(function (a, b) { return a - b; });
+    if (!meses.length) return emptyState(document.getElementById('chartHorasMes'));
+    var cats = meses.map(function (m) { return MESES_CORTO[m]; });
+    function sumaMes(m, campo) { return rows.filter(function (r) { return r.mesIdx === m; }).reduce(function (a, r) { return a + r[campo]; }, 0); }
+    var series = [
+      { name: 'Normales', color: cssVar('--sld-teal'), values: meses.map(function (m) { return sumaMes(m, 'normales'); }) },
+      { name: 'Al 50%', color: cssVar('--sld-sage'), values: meses.map(function (m) { return sumaMes(m, 'h50'); }) },
+      { name: 'Al 100%', color: cssVar('--sld-navy'), values: meses.map(function (m) { return sumaMes(m, 'h100'); }) }
+    ];
+    var emphasisIdx = emphasisIndexForValue(meses, state.mes);
+    renderBarChart(document.getElementById('chartHorasMes'), cats, series, { stacked: true, valueFormatter: formatNum, tooltipFormatter: formatNum, emphasisIndex: emphasisIdx });
+    var trows = meses.map(function (m, i) {
+      return [cats[i], formatNum(sumaMes(m, 'normales')), formatNum(sumaMes(m, 'h50')), formatNum(sumaMes(m, 'h100'))];
+    });
+    renderSimpleTable(document.getElementById('chartHorasMes-table'), ['Mes', 'Normales', 'Al 50%', 'Al 100%'], trows);
+  }
+
+  function renderHorasCategoria() {
+    var rows = horasFiltradasCompleto();
+    var items = CATEGORIAS_ORDEN.map(function (cat) {
+      var total = rows.filter(function (r) { return r.categoria === cat; }).reduce(function (a, r) { return a + r.total; }, 0);
+      return { label: cat, value: total, color: catColorHex(cat), opacity: emphasisOpacity(cat) };
+    }).filter(function (i) { return i.value > 0; });
+    renderHorizontalBar(document.getElementById('chartHorasCategoria'), items, { valueFormatter: formatNum, valueLabel: 'Horas', rowHeight: 46, barThickness: 0.7 });
+  }
+
+  var sortHoras = { col: 'total', dir: -1 };
+  function renderHorasPersona() {
+    var rows = horasFiltradas();
+    var porPersona = {};
+    rows.forEach(function (r) {
+      var k = r.persona;
+      if (!porPersona[k]) porPersona[k] = { persona: r.persona, categoria: r.categoria, normales: 0, h50: 0, h100: 0, total: 0 };
+      porPersona[k].normales += r.normales; porPersona[k].h50 += r.h50; porPersona[k].h100 += r.h100; porPersona[k].total += r.total;
+    });
+    var list = Object.keys(porPersona).map(function (k) { return porPersona[k]; });
+    if (state.busqueda) list = list.filter(function (p) { return p.persona.toLowerCase().indexOf(state.busqueda) !== -1; });
+    list.sort(function (a, b) { return (a[sortHoras.col] > b[sortHoras.col] ? 1 : -1) * sortHoras.dir; });
+
+    var container = document.getElementById('tablaHorasPersona');
+    container.innerHTML = '';
+    if (!list.length) return emptyState(container, 'No hay personas para este filtro.');
+    var table = document.createElement('table');
+    table.className = 'data-table';
+    var thead = document.createElement('thead');
+    var tr = document.createElement('tr');
+    var cols = [
+      { key: 'persona', label: 'Persona', num: false },
+      { key: 'categoria', label: 'Categoría', num: false },
+      { key: 'normales', label: 'Normales', num: true },
+      { key: 'h50', label: 'Al 50%', num: true },
+      { key: 'h100', label: 'Al 100%', num: true },
+      { key: 'total', label: 'Total', num: true }
+    ];
+    cols.forEach(function (c) {
+      var th = document.createElement('th');
+      th.textContent = c.label;
+      if (c.num) th.className = 'num';
+      if (sortHoras.col === c.key) th.className += ' sorted';
+      th.addEventListener('click', function () {
+        sortHoras.dir = sortHoras.col === c.key ? -sortHoras.dir : -1;
+        sortHoras.col = c.key;
+        renderHorasPersona();
+      });
+      tr.appendChild(th);
+    });
+    thead.appendChild(tr);
+    table.appendChild(thead);
+    var tbody = document.createElement('tbody');
+    list.forEach(function (p) {
+      var row = document.createElement('tr');
+      [p.persona, p.categoria, formatNum(p.normales), formatNum(p.h50), formatNum(p.h100), formatNum(p.total)].forEach(function (val, i) {
+        var td = document.createElement('td');
+        td.textContent = val;
+        if (cols[i].num) td.className = 'num';
+        row.appendChild(td);
+      });
+      tbody.appendChild(row);
+    });
+    table.appendChild(tbody);
+    container.appendChild(table);
+  }
+
+  // Los dos "grupos" de la Variación del Valor de la Hora: Precio Hora Básico
+  // UOCRA (línea sólida) y Bruto de IVC (línea punteada) — cada uno aporta
+  // hasta 4 líneas (una por categoría, mismo color fijo que en el resto del
+  // tablero). Una casilla por grupo prende/apaga sus 4 líneas juntas.
+  var GRUPOS_PRECIO = [
+    { key: 'basico', campo: 'basico', label: 'UOCRA', dash: false },
+    { key: 'bruto', campo: 'bruto', label: 'IVC', dash: true }
+  ];
+
+  function renderPrecios() {
+    if (!state.precioGrupos) state.precioGrupos = { basico: true, bruto: true };
+
+    var wrapLegend = document.getElementById('legendPrecios');
+    if (wrapLegend) {
+      wrapLegend.innerHTML = '';
+      var swColor = cssVar('--sld-navy');
+      GRUPOS_PRECIO.forEach(function (g) {
+        var item = document.createElement('label');
+        item.className = 'legend-check-item' + (state.precioGrupos[g.key] ? '' : ' off');
+        var chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.checked = state.precioGrupos[g.key];
+        chk.addEventListener('change', function () {
+          state.precioGrupos[g.key] = chk.checked;
+          renderPrecios();
+        });
+        var sw = document.createElement('span');
+        sw.className = 'legend-swatch line' + (g.dash ? ' dashed' : '');
+        sw.style.background = g.dash
+          ? 'repeating-linear-gradient(to right, ' + swColor + ' 0, ' + swColor + ' 4px, transparent 4px, transparent 7px)'
+          : swColor;
+        var txt = document.createElement('span');
+        txt.textContent = g.label;
+        item.appendChild(chk); item.appendChild(sw); item.appendChild(txt);
+        wrapLegend.appendChild(item);
+      });
+    }
+
+    var rows = RAW.precios.filter(function (r) { return r.anio === anioOperativo; });
+    var meses = Array.from(new Set(rows.map(function (r) { return r.mesIdx; }))).sort(function (a, b) { return a - b; });
+    if (!meses.length) return emptyState(document.getElementById('chartPrecios'));
+    var cats = meses.map(function (m) { return MESES_CORTO[m]; });
+
+    var series = [];
+    GRUPOS_PRECIO.forEach(function (g) {
+      if (!state.precioGrupos[g.key]) return;
+      CATEGORIAS_ORDEN.forEach(function (cat) {
+        var values = meses.map(function (m) {
+          var f = rows.find(function (r) { return r.mesIdx === m && r.categoria === cat; });
+          return (f && f[g.campo] !== null && f[g.campo] !== undefined) ? f[g.campo] : null;
+        });
+        if (!values.some(function (v) { return v !== null; })) return;
+        series.push({ name: cat + ' (' + g.label + ')', color: catColorHex(cat), dash: g.dash, values: values, opacity: emphasisOpacity(cat) });
+      });
+    });
+
+    if (!series.length) return emptyState(document.getElementById('chartPrecios'), 'Destildaste todos los grupos — no hay nada para mostrar.');
+
+    renderLineChart(document.getElementById('chartPrecios'), cats, series, { valueFormatter: formatMoney, endLabels: false });
+
+    var tcols = ['Categoría (grupo)'].concat(cats);
+    var trows = series.map(function (s) { return [s.name].concat(s.values.map(function (v) { return v === null ? '—' : formatMoney(v); })); });
+    renderSimpleTable(document.getElementById('chartPrecios-table'), tcols, trows);
+  }
+
+  // Costo real por hora = Costo Total del Mes (Sueldos + Aportes + Contribuciones)
+  // dividido por las Horas Totales Trabajadas de ese mismo mes. A diferencia de
+  // renderPrecios() (que muestra el valor de convenio por categoría), esto es un
+  // promedio único de toda la nómina, con antigüedad/adicionales/horas extra ya
+  // incluidos en el costo.
+  // Promedio simple del Precio Hora Básico UOCRA entre las categorías con
+  // precio cargado en ese mes puntual (no arrastra el último valor conocido
+  // como precioAFinDeMes — acá interesa comparar mes a mes contra lo real).
+  function costoTeoricoPromedioMes(mesIdx) {
+    var vals = RAW.precios.filter(function (r) {
+      return r.anio === anioOperativo && r.mesIdx === mesIdx && r.basico !== null;
+    }).map(function (r) { return r.basico; });
+    if (!vals.length) return null;
+    return vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
+  }
+
+  function renderCostoRealPorHora() {
+    var rows = RAW.costoMensual
+      .filter(function (r) { return r.anio === anioOperativo; })
+      .sort(function (a, b) { return a.mesIdx - b.mesIdx; });
+    var puntos = rows.map(function (r) {
+      var horas = horasTotalMes(r.mesIdx);
+      return { mesIdx: r.mesIdx, costoHora: horas > 0 ? (r.total / horas) : null };
+    }).filter(function (p) { return p.costoHora !== null; });
+    if (!puntos.length) return emptyState(document.getElementById('chartCostoRealHora'));
+    var cats = puntos.map(function (p) { return MESES_CORTO[p.mesIdx]; });
+    var teorico = puntos.map(function (p) { return costoTeoricoPromedioMes(p.mesIdx); });
+    var series = [
+      { name: 'Costo Real por Hora (promedio)', color: cssVar('--sld-pine'), dash: true, values: puntos.map(function (p) { return p.costoHora; }) },
+      { name: 'Costo Teórico UOCRA (promedio)', color: cssVar('--sld-blue-light'), values: teorico }
+    ];
+    renderLineChart(document.getElementById('chartCostoRealHora'), cats, series, { valueFormatter: formatMoney, endLabels: false });
+
+    var trows = puntos.map(function (p, i) {
+      return [cats[i], formatMoney(p.costoHora), teorico[i] === null ? '—' : formatMoney(teorico[i])];
+    });
+    renderSimpleTable(document.getElementById('chartCostoRealHora-table'), ['Mes', 'Costo Real por Hora', 'Costo Teórico UOCRA (promedio)'], trows);
+  }
+
+  // ============================================================
+  // Módulo Compras — Resumen General + gráfico filtrable
+  // ============================================================
+  function renderComprasAll() {
+    renderKpisCompras();
+    renderTortasCompras();
+    actualizarDesgloseFacturas();
+  }
+
+  // 4 gráficos de torta fijos (no siguen los filtros de "Facturación por Mes":
+  // muestran el panorama completo del año vigente, igual que el criterio ya
+  // usado en Resumen General).
+  var TORTAS_COMPRAS = [
+    { campo: 'categoria', chartId: 'pieCategoria' },
+    { campo: 'subcategoria', chartId: 'pieSubcategoria' },
+    { campo: 'tipoItem', chartId: 'pieTipoItem' },
+    { campo: 'imputacionGestion', chartId: 'pieImputacion' }
+  ];
+
+  function renderTortasCompras() {
+    var anioLbl = document.getElementById('anioTortasCompras');
+    if (anioLbl) anioLbl.textContent = anioOperativoCompras != null ? anioOperativoCompras : '—';
+
+    var delAnio = RAW.facturas.filter(function (f) { return f.anio === anioOperativoCompras; });
+
+    TORTAS_COMPRAS.forEach(function (t) {
+      var info = construirDesgloseInfo(delAnio, t.campo, PALETA_TORTA);
+      var items = info.orden.map(function (v) {
+        return { label: etiquetaValorDesglose(v), value: info.totales[v], color: info.colores[v] };
+      });
+      var chartEl = document.getElementById(t.chartId);
+      var legendEl = document.getElementById(t.chartId + '-legend');
+      var tableEl = document.getElementById(t.chartId + '-table');
+      renderPieChart(chartEl, items);
+      renderPieLegend(legendEl, items);
+      var total = items.reduce(function (s, it) { return s + it.value; }, 0);
+      renderSimpleTable(tableEl, ['Valor', 'Monto', '% del total'], items.map(function (it) {
+        return [it.label, formatMoney(it.value), total > 0 ? (it.value / total * 100).toFixed(1) + '%' : '0%'];
+      }));
+    });
+  }
+
+  function sumaTotalFacturado(lista) {
+    return lista.reduce(function (s, f) { return s + f.total; }, 0);
+  }
+
+  function renderKpisCompras() {
+    var wrap = document.getElementById('kpiRowCompras');
+    wrap.innerHTML = '';
+    var esTodos = stateCompras.mesResumen === 'todos';
+    var mesRef = stateCompras.mesResumen;
+    var mesRefNombre = esTodos ? null : MESES_DISPLAY[mesRef];
+
+    var delMesRef = esTodos
+      ? RAW.facturas.filter(function (f) { return f.anio === anioOperativoCompras; })
+      : RAW.facturas.filter(function (f) { return f.anio === anioOperativoCompras && f.mesIdx === mesRef; });
+    var delMesAnterior = (!esTodos && mesRef > 0) ? RAW.facturas.filter(function (f) { return f.anio === anioOperativoCompras && f.mesIdx === mesRef - 1; }) : [];
+
+    var totalMesRef = sumaTotalFacturado(delMesRef);
+    var totalMesAnterior = sumaTotalFacturado(delMesAnterior);
+    var deltaTotal = [];
+    if (!esTodos && mesRef > 0) {
+      var diff = totalMesRef - totalMesAnterior;
+      var signo = diff > 0 ? '+' : (diff < 0 ? '−' : '');
+      deltaTotal.push((diff === 0 ? 'Sin cambios' : signo + formatMoney(Math.abs(diff))) + ' vs. mes anterior');
+    }
+
+    // Pendiente de pago: estado actual, no depende del mes elegido arriba
+    // (una factura vieja sin pagar sigue pendiente hoy).
+    var pendientes = RAW.facturas.filter(function (f) { return f.estadoPago !== 'Pagado'; });
+    var montoPendiente = sumaTotalFacturado(pendientes);
+
+    var porProveedor = {};
+    delMesRef.forEach(function (f) { porProveedor[f.proveedor] = (porProveedor[f.proveedor] || 0) + f.total; });
+    var proveedores = Object.keys(porProveedor).sort(function (a, b) { return porProveedor[b] - porProveedor[a]; });
+    var proveedorPrincipal = proveedores.length ? proveedores[0] : null;
+
+    var periodoLbl = esTodos ? ('Año completo ' + anioOperativoCompras) : (mesRefNombre + ' ' + anioOperativoCompras);
+    var periodoLblCorto = esTodos ? ('en ' + anioOperativoCompras) : ('en ' + mesRefNombre);
+
+    var tiles = [
+      { label: esTodos ? 'Total Facturado en el Año' : 'Total Facturado del Mes', value: formatMoney(totalMesRef), sub: periodoLbl, deltas: deltaTotal },
+      { label: esTodos ? 'Cantidad de Facturas en el Año' : 'Cantidad de Facturas del Mes', value: formatNum(delMesRef.length), sub: 'Facturas registradas ' + periodoLblCorto },
+      { label: 'Pendiente de Pago', value: formatMoney(montoPendiente), sub: 'Total no pagado a hoy (' + formatNum(pendientes.length) + ' facturas, todas las fechas)' },
+      {
+        label: esTodos ? 'Proveedor Principal del Año' : 'Proveedor Principal del Mes',
+        value: proveedorPrincipal || '—',
+        valueClass: proveedorPrincipal ? 'text-value' : '',
+        sub: proveedorPrincipal ? (formatMoney(porProveedor[proveedorPrincipal]) + ' facturados ' + periodoLblCorto) : ('Sin facturas ' + periodoLblCorto)
+      }
+    ];
+    tiles.forEach(function (t) {
+      var d = document.createElement('div'); d.className = 'kpi-tile';
+      var l = document.createElement('div'); l.className = 'label'; l.textContent = t.label;
+      var v = document.createElement('div'); v.className = 'value' + (t.valueClass ? ' ' + t.valueClass : ''); v.textContent = t.value;
+      d.appendChild(l); d.appendChild(v);
+      if (t.sub) {
+        var s = document.createElement('div'); s.className = 'sub'; s.textContent = t.sub;
+        d.appendChild(s);
+      }
+      if (t.deltas && t.deltas.length) {
+        var dl = document.createElement('div'); dl.className = 'deltas';
+        dl.textContent = t.deltas.join(' · ');
+        d.appendChild(dl);
+      }
+      wrap.appendChild(d);
+    });
+  }
+
+  // Los 7 filtros se combinan con Y lógico: una factura solo entra si cumple
+  // TODOS los filtros activos a la vez (los que están en "Todas" no restringen).
+  // Facturas pre-filtradas por Año + los 7 filtros combinables (Y lógico) —
+  // esta es la base sobre la que se arma el desglose y se calculan totales.
+  function facturasPreFiltradas() {
+    var anio = stateCompras.anioFacturas;
+    return RAW.facturas.filter(function (f) {
+      if (f.anio !== anio) return false;
+      return FILTROS_FACTURA_CAMPOS.every(function (fc) {
+        var val = stateCompras.filtros[fc.campo];
+        return val === 'Todas' || f[fc.campo] === val;
+      });
+    });
+  }
+
+  // Ranking y colores de los valores de la variable de desglose elegida,
+  // calculado sobre las facturas pre-filtradas. Hasta 8 valores se colorean
+  // directamente (paleta de marca + 3 tintes); el resto se agrupa en "Otros"
+  // (gris neutro) para no terminar con decenas de franjas indistinguibles.
+  // Este ranking NO se recalcula al tildar/destildar casillas — así los
+  // colores quedan fijos por valor mientras no cambie el año/pre-filtros/variable.
+  function construirDesgloseInfo(preFiltradas, campo, paleta) {
+    paleta = paleta || PALETA_FACTURAS_EXT;
+    var totalesPorValor = {};
+    preFiltradas.forEach(function (f) {
+      var v = f[campo] || 'Sin dato';
+      totalesPorValor[v] = (totalesPorValor[v] || 0) + f.total;
+    });
+    var ordenados = Object.keys(totalesPorValor).sort(function (a, b) { return totalesPorValor[b] - totalesPorValor[a]; });
+
+    var cap = paleta.length;
+    var directos, resto;
+    if (ordenados.length <= cap) { directos = ordenados; resto = []; }
+    else { directos = ordenados.slice(0, cap - 1); resto = ordenados.slice(cap - 1); }
+
+    var colores = {};
+    directos.forEach(function (v, i) { colores[v] = paleta[i]; });
+    var totales = {};
+    directos.forEach(function (v) { totales[v] = totalesPorValor[v]; });
+    if (resto.length) {
+      colores['Otros'] = COLOR_OTROS_FACTURAS;
+      totales['Otros'] = resto.reduce(function (s, v) { return s + totalesPorValor[v]; }, 0);
+    }
+    var orden = directos.concat(resto.length ? ['Otros'] : []);
+    return { orden: orden, colores: colores, otrosSet: resto, totales: totales };
+  }
+
+  function bucketDeFactura(f, campo, info) {
+    var v = f[campo] || 'Sin dato';
+    return info.otrosSet.indexOf(v) !== -1 ? 'Otros' : v;
+  }
+
+  function etiquetaValorDesglose(v) { return v === 'Otros' || v === 'Sin dato' ? v : tituloDesdeMayusculas(v); }
+
+  // Se llama cuando cambia el "universo" (año, cualquiera de los 7 filtros,
+  // o la variable de desglose): recalcula ranking/colores, reconstruye la
+  // leyenda con casillas (todas tildadas por defecto) y vuelve a renderizar.
+  function actualizarDesgloseFacturas() {
+    var preFiltradas = facturasPreFiltradas();
+    var campo = stateCompras.desglosePor;
+    var info = construirDesgloseInfo(preFiltradas, campo);
+    stateCompras.desgloseInfo = info;
+    stateCompras.valoresDesglose = {};
+    info.orden.forEach(function (v) { stateCompras.valoresDesglose[v] = true; });
+
+    var wrap = document.getElementById('legendFacturasDesglose');
+    wrap.innerHTML = '';
+    if (!info.orden.length) {
+      renderFacturasMes();
+      return;
+    }
+    info.orden.forEach(function (v) {
+      var item = document.createElement('label');
+      item.className = 'legend-check-item';
+      var chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.checked = true;
+      chk.addEventListener('change', function () {
+        stateCompras.valoresDesglose[v] = chk.checked;
+        item.classList.toggle('off', !chk.checked);
+        renderFacturasMes();
+      });
+      var sw = document.createElement('span'); sw.className = 'legend-swatch'; sw.style.background = info.colores[v];
+      var txt = document.createElement('span');
+      txt.textContent = etiquetaValorDesglose(v) + ' ';
+      var monto = document.createElement('span'); monto.className = 'monto'; monto.textContent = '(' + formatCompact(info.totales[v]) + ')';
+      txt.appendChild(monto);
+      item.appendChild(chk); item.appendChild(sw); item.appendChild(txt);
+      wrap.appendChild(item);
+    });
+
+    renderFacturasMes();
+  }
+
+  // Los valores destildados se excluyen del todo: no aparecen en el gráfico
+  // ni suman al total apilado de cada mes (se recalcula todo en cada toggle).
+  function renderFacturasMes() {
+    var info = stateCompras.desgloseInfo;
+    var chartEl = document.getElementById('chartFacturasMes');
+    if (!info || !info.orden.length) return emptyState(chartEl);
+
+    var campo = stateCompras.desglosePor;
+    var filtradas = facturasPreFiltradas();
+    var meses = Array.from(new Set(filtradas.map(function (f) { return f.mesIdx; }))).sort(function (a, b) { return a - b; });
+    if (!meses.length) return emptyState(chartEl);
+
+    var algunoActivo = info.orden.some(function (v) { return stateCompras.valoresDesglose[v]; });
+    if (!algunoActivo) return emptyState(chartEl, 'Destildaste todos los valores — no hay nada para mostrar.');
+
+    var cats = meses.map(function (m) { return MESES_CORTO[m]; });
+    var series = info.orden.map(function (v) {
+      var activo = stateCompras.valoresDesglose[v];
+      return {
+        name: etiquetaValorDesglose(v),
+        color: info.colores[v],
+        values: meses.map(function (m) {
+          if (!activo) return 0;
+          return sumaTotalFacturado(filtradas.filter(function (f) { return f.mesIdx === m && bucketDeFactura(f, campo, info) === v; }));
+        })
+      };
+    });
+
+    renderBarChart(chartEl, cats, series, {
+      stacked: true, stackTotals: true, hideLegend: true, totalBadge: true,
+      valueFormatter: formatCompact, tooltipFormatter: formatMoney
+    });
+
+    var seriesActivas = series.filter(function (s, i) { return stateCompras.valoresDesglose[info.orden[i]]; });
+    var cols = ['Mes'].concat(seriesActivas.map(function (s) { return s.name; })).concat(['Total']);
+    var trows = meses.map(function (m, i) {
+      var row = [cats[i]];
+      var total = 0;
+      seriesActivas.forEach(function (s) { row.push(formatMoney(s.values[i])); total += s.values[i]; });
+      row.push(formatMoney(total));
+      return row;
+    });
+    renderSimpleTable(document.getElementById('chartFacturasMes-table'), cols, trows);
+  }
+
+  // ============================================================
+  // Módulo Costos — costo consolidado (Sueldos + Compras)
+  // ============================================================
+  // No trae datos propios: combina RAW.costoMensual y RAW.horas (Sueldos) con
+  // RAW.facturas (Compras), ya cargados. Usa el mismo año operativo que
+  // Sueldos (anioOperativo) como año de referencia — asume que ambas fuentes
+  // están al día en el mismo año, igual que ya asume el resto del tablero.
+  var stateCostos = { mesResumen: null };
+
+  // Días hábiles (lunes a viernes) de un mes — no descuenta feriados: no hay
+  // todavía un calendario de feriados cargado en el tablero. Si hace falta más
+  // precisión más adelante, se puede sumar una lista de feriados y restarlos acá.
+  function diasHabilesEnMes(anio, mesIdx) {
+    var diasDelMes = new Date(anio, mesIdx + 1, 0).getDate();
+    var habiles = 0;
+    for (var d = 1; d <= diasDelMes; d++) {
+      var wd = new Date(anio, mesIdx, d).getDay();
+      if (wd >= 1 && wd <= 5) habiles++;
+    }
+    return habiles;
+  }
+  function costoSueldosMes(anio, mesIdx) {
+    var r = RAW.costoMensual.filter(function (c) { return c.anio === anio && c.mesIdx === mesIdx; })[0];
+    return r ? r.total : 0;
+  }
+  function costoComprasMes(anio, mesIdx) {
+    return sumaTotalFacturado(RAW.facturas.filter(function (f) { return f.anio === anio && f.mesIdx === mesIdx; }));
+  }
+  function horasTrabajadasMes(anio, mesIdx) {
+    return RAW.horas.filter(function (h) { return h.anio === anio && h.mesIdx === mesIdx; })
+      .reduce(function (s, h) { return s + h.total; }, 0);
+  }
+
+  function renderKpisCostos() {
+    var wrapTotal = document.getElementById('kpiRowCostosTotal');
+    var wrapProm = document.getElementById('kpiRowCostosPromedio');
+    wrapTotal.innerHTML = '';
+    wrapProm.innerHTML = '';
+
+    var anio = anioOperativo;
+    if (stateCostos.mesResumen === null) return;
+    var esTodos = stateCostos.mesResumen === 'todos';
+    var costoAnioRefCostos = RAW.costoMensual.filter(function (r) { return r.anio === anio; });
+    var mesRef = esTodos
+      ? (costoAnioRefCostos.length ? costoAnioRefCostos[costoAnioRefCostos.length - 1].mesIdx : new Date().getMonth())
+      : stateCostos.mesResumen;
+    var mesRefNombre = MESES_DISPLAY[mesRef];
+
+    // Promedios/acumulados Ene..mesRef del año operativo — sobre la suma
+    // acumulada del período (no el promedio de los promedios mensuales): así
+    // un mes con menos días hábiles u horas no distorsiona el resultado.
+    var mesLbl = document.getElementById('mesPromedioCostosLabel');
+    if (mesLbl) mesLbl.textContent = mesRefNombre;
+
+    var sumCosto = 0, sumDias = 0, sumHoras = 0, nMeses = mesRef + 1;
+    for (var m = 0; m <= mesRef; m++) {
+      sumCosto += costoSueldosMes(anio, m) + costoComprasMes(anio, m);
+      sumDias += diasHabilesEnMes(anio, m);
+      sumHoras += horasTrabajadasMes(anio, m);
+    }
+
+    var tilesTotal;
+    if (esTodos) {
+      tilesTotal = [
+        {
+          label: 'Costo Total Acumulado en el Año', value: formatMoney(sumCosto),
+          sub: 'Enero–' + mesRefNombre + ' ' + anio + ' — Sueldos + Compras'
+        },
+        {
+          label: 'Costo Total por Día (Año)', value: sumDias > 0 ? formatMoney(sumCosto / sumDias) : '—',
+          sub: sumDias + ' días hábiles en el período'
+        },
+        {
+          label: 'Costo Total por Hora (Año)', value: sumHoras > 0 ? formatMoney(sumCosto / sumHoras) : '—',
+          sub: sumHoras > 0 ? formatNum(sumHoras) + ' horas trabajadas en el período' : 'Sin horas cargadas en el período'
+        }
+      ];
+    } else {
+      var cSueldos = costoSueldosMes(anio, mesRef);
+      var cCompras = costoComprasMes(anio, mesRef);
+      var costoTotal = cSueldos + cCompras;
+      var dias = diasHabilesEnMes(anio, mesRef);
+      var horas = horasTrabajadasMes(anio, mesRef);
+      tilesTotal = [
+        {
+          label: 'Costo Total del Mes', value: formatMoney(costoTotal),
+          sub: mesRefNombre + ' ' + anio + ' — Sueldos ' + formatCompact(cSueldos) + ' + Compras ' + formatCompact(cCompras)
+        },
+        {
+          label: 'Costo Total por Día', value: dias > 0 ? formatMoney(costoTotal / dias) : '—',
+          sub: dias + ' días hábiles en ' + mesRefNombre
+        },
+        {
+          label: 'Costo Total por Hora', value: horas > 0 ? formatMoney(costoTotal / horas) : '—',
+          sub: horas > 0 ? formatNum(horas) + ' horas trabajadas en ' + mesRefNombre : 'Sin horas cargadas en ' + mesRefNombre
+        }
+      ];
+    }
+    tilesTotal.forEach(function (t) { wrapTotal.appendChild(kpiTileEl(t)); });
+
+    var promMensual = nMeses > 0 ? sumCosto / nMeses : 0;
+    var promDiario = sumDias > 0 ? sumCosto / sumDias : 0;
+    var promHora = sumHoras > 0 ? sumCosto / sumHoras : 0;
+
+    var tilesProm = [
+      {
+        label: 'Costo Promedio Mensual', value: formatMoney(promMensual),
+        sub: 'Promedio Ene–' + mesRefNombre + ' ' + anio + ' (' + nMeses + ' meses)'
+      },
+      {
+        label: 'Costo Promedio Diario', value: sumDias > 0 ? formatMoney(promDiario) : '—',
+        sub: sumDias + ' días hábiles en el período'
+      },
+      {
+        label: 'Costo Promedio por Hora', value: sumHoras > 0 ? formatMoney(promHora) : '—',
+        sub: sumHoras > 0 ? formatNum(sumHoras) + ' horas trabajadas en el período' : 'Sin horas cargadas en el período'
+      }
+    ];
+    tilesProm.forEach(function (t) { wrapProm.appendChild(kpiTileEl(t)); });
+  }
+
+  // Composición del costo total: Sueldos + cada macrocategoría de Compras,
+  // del mes elegido en el filtro "Mes" de arriba (stateCostos.mesResumen) —
+  // el mismo mes que usan los KPI de "Costo Total del Mes". Es un gráfico de
+  // torta ("todos contra todos": dos porciones cualquiera pueden terminar
+  // lado a lado), así que usa PALETA_TORTA (4 tonos, verificados para ese
+  // chequeo estricto) y NO la paleta extendida de 8 tonos que usan las
+  // barras apiladas — con 5+ colores en una torta, el validador de la guía
+  // de dataviz encuentra pares que no se distinguen. Por eso acá el tope de
+  // macrocategorías "propias" es 4 (no 8): de la 5ta en adelante se agrupan
+  // en "Otros", igual que en los otros 4 gráficos de torta de Compras (esos
+  // sí muestran el año completo — acá se decidió seguir el mes en vez del
+  // año porque es lo que pidió Rocío).
+  function construirComposicionCosto(anio, mesIdx) {
+    var totalSueldos = costoSueldosMes(anio, mesIdx);
+
+    var facturasMes = RAW.facturas.filter(function (f) { return f.anio === anio && f.mesIdx === mesIdx; });
+    var totalesPorMacro = {};
+    facturasMes.forEach(function (f) {
+      var v = f.categoriaMacro || 'Sin dato';
+      totalesPorMacro[v] = (totalesPorMacro[v] || 0) + f.total;
+    });
+    var macros = Object.keys(totalesPorMacro).sort(function (a, b) { return totalesPorMacro[b] - totalesPorMacro[a]; });
+
+    var paleta = PALETA_TORTA;
+    var cap = paleta.length;
+    var directos, resto;
+    if (macros.length <= cap) { directos = macros; resto = []; }
+    else { directos = macros.slice(0, cap - 1); resto = macros.slice(cap - 1); }
+
+    var items = [{ label: 'Sueldos', value: totalSueldos, color: COLOR_SUELDOS_COSTOS }];
+    directos.forEach(function (v, i) {
+      items.push({ label: etiquetaValorDesglose(v), value: totalesPorMacro[v], color: paleta[i] });
+    });
+    if (resto.length) {
+      items.push({
+        label: 'Otros',
+        value: resto.reduce(function (s, v) { return s + totalesPorMacro[v]; }, 0),
+        color: COLOR_OTROS_FACTURAS
+      });
+    }
+    return items.sort(function (a, b) { return b.value - a.value; });
+  }
+
+  function renderComposicionCosto() {
+    // Esta torta siempre muestra la composición de UN mes puntual (decisión
+    // de diseño explícita, ver comentario de construirComposicionCosto): si
+    // el filtro de arriba está en "Todos", acá se sigue mostrando el mes más
+    // reciente con datos, en vez de intentar mezclar 12 meses en una sola torta.
+    if (stateCostos.mesResumen === null) return;
+    var esTodosComposicion = stateCostos.mesResumen === 'todos';
+    var mesRef = stateCostos.mesResumen;
+    if (esTodosComposicion) {
+      var costoAnioRefComposicion = RAW.costoMensual.filter(function (r) { return r.anio === anioOperativo; });
+      mesRef = costoAnioRefComposicion.length ? costoAnioRefComposicion[costoAnioRefComposicion.length - 1].mesIdx : new Date().getMonth();
+    }
+    var lbl = document.getElementById('periodoComposicionCosto');
+    if (lbl) lbl.textContent = mesRef != null ? (MESES_DISPLAY[mesRef] + ' ' + anioOperativo + (esTodosComposicion ? ' (mes más reciente con datos)' : '')) : '—';
+    if (mesRef === null) return;
+
+    var items = construirComposicionCosto(anioOperativo, mesRef).filter(function (it) { return it.value > 0; });
+    var chartEl = document.getElementById('pieComposicionCosto');
+    var legendEl = document.getElementById('pieComposicionCosto-legend');
+    var tableEl = document.getElementById('pieComposicionCosto-table');
+    renderPieChart(chartEl, items);
+    renderPieLegend(legendEl, items);
+    var total = items.reduce(function (s, it) { return s + it.value; }, 0);
+    renderSimpleTable(tableEl, ['Componente', 'Monto', '% del total'], items.map(function (it) {
+      return [it.label, formatMoney(it.value), total > 0 ? (it.value / total * 100).toFixed(1) + '%' : '0%'];
+    }));
+  }
+
+  // Costo por Mes: mismo tipo de gráfico (columnas apiladas + total arriba de
+  // cada barra) que "Facturación por Mes" en Compras, pero con 2 series fijas
+  // (Sueldos y Compras) en vez de un desglose elegible por el usuario — acá no
+  // hace falta esa complejidad porque siempre son las mismas dos fuentes.
+  // Toma TODOS los meses con datos del año, de cualquiera de las dos fuentes
+  // (unión, no solo los meses que ya tiene cargados Sueldos): Compras suele
+  // tener facturas de meses más recientes que los que todavía cargó Sueldos,
+  // y si el gráfico solo mirara RAW.costoMensual se cortaba en el último mes
+  // con nómina cargada aunque ya hubiera facturas de Compras más nuevas.
+  function renderCostoPorMes() {
+    var anio = anioOperativo;
+    var mesesSet = {};
+    RAW.costoMensual.forEach(function (r) { if (r.anio === anio) mesesSet[r.mesIdx] = true; });
+    RAW.facturas.forEach(function (f) { if (f.anio === anio) mesesSet[f.mesIdx] = true; });
+    var meses = Object.keys(mesesSet).map(Number).sort(function (a, b) { return a - b; });
+
+    var chartEl = document.getElementById('chartCostoPorMes');
+    if (!meses.length) return emptyState(chartEl);
+
+    var cats = meses.map(function (m) { return MESES_CORTO[m]; });
+    // Imputación manual solicitada por Rocío: Enero/Febrero/Marzo no tienen
+    // datos de Compras cargados todavía, así que se agrega acá un monto
+    // estimado de $100.000.000 por mes como referencia visual — SOLO en este
+    // gráfico (no toca RAW.facturas ni ningún KPI/promedio de arriba, que
+    // siguen calculándose únicamente con datos reales). Se dibuja como
+    // segmento hueco con borde punteado (ver ser.hollow en renderBarChart)
+    // para que quede claro que es una estimación y no un monto cargado.
+    var MESES_IMPUTACION_COSTOS = [0, 1, 2]; // Ene, Feb, Mar
+    var MONTO_IMPUTACION_COSTOS = 100000000;
+    var series = [
+      { name: 'Sueldos', color: COLOR_SUELDOS_COSTOS, values: meses.map(function (m) { return costoSueldosMes(anio, m); }) },
+      { name: 'Compras', color: PALETA_TORTA[0], values: meses.map(function (m) { return costoComprasMes(anio, m); }) },
+      {
+        name: 'Imputación estimada por dato faltante', color: COLOR_IMPUTACION_COSTOS, hollow: true,
+        values: meses.map(function (m) { return MESES_IMPUTACION_COSTOS.indexOf(m) >= 0 ? MONTO_IMPUTACION_COSTOS : 0; })
+      }
+    ];
+    renderBarChart(chartEl, cats, series, {
+      height: 340, stacked: true, stackTotals: true, totalBadge: true,
+      valueFormatter: formatCompact, tooltipFormatter: formatMoney
+    });
+
+    var cols = ['Mes', 'Sueldos', 'Compras', 'Costo Total'];
+    var trows = meses.map(function (m, i) {
+      var cSueldos = costoSueldosMes(anio, m);
+      var cCompras = costoComprasMes(anio, m);
+      return [cats[i], formatMoney(cSueldos), formatMoney(cCompras), formatMoney(cSueldos + cCompras)];
+    });
+    renderSimpleTable(document.getElementById('chartCostoPorMes-table'), cols, trows);
+  }
+
+  // Arma un .kpi-tile (mismo formato que renderKpis/renderKpisCompras) a partir
+  // de {label, value, sub, valueClass, deltas} — extraído para reusarlo acá sin
+  // duplicar el armado de nodos.
+  function kpiTileEl(t) {
+    var d = document.createElement('div'); d.className = 'kpi-tile';
+    var l = document.createElement('div'); l.className = 'label'; l.textContent = t.label;
+    var v = document.createElement('div'); v.className = 'value' + (t.valueClass ? ' ' + t.valueClass : ''); v.textContent = t.value;
+    d.appendChild(l); d.appendChild(v);
+    if (t.sub) {
+      var s = document.createElement('div'); s.className = 'sub'; s.textContent = t.sub;
+      d.appendChild(s);
+    }
+    if (t.deltas && t.deltas.length) {
+      var dl = document.createElement('div'); dl.className = 'deltas';
+      dl.textContent = t.deltas.join(' · ');
+      d.appendChild(dl);
+    }
+    return d;
+  }
+
+})();
+</script>
+</body>
+</html>
