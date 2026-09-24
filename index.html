@@ -262,6 +262,10 @@
   }
   .kpi-tile .value.text-value { font-size: 18px; line-height: 1.3; white-space: normal; }
   .kpi-tile .sub { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; line-height: 1.25; }
+  /* Un valor de texto (ej. nombre de proveedor, puede ocupar 2 líneas) queda
+     más pegado visualmente al Detalle de abajo que un valor numérico de una
+     sola línea — un poco más de aire acá para separarlos. */
+  .kpi-tile .value.text-value + .sub { margin-top: 6px; }
   .kpi-tile .periodo { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
   .kpi-tile .deltas { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
   .kpi-tile .deltas span { white-space: nowrap; }
@@ -604,22 +608,25 @@
 
 <div id="moduloCompras" class="modulo-panel hidden">
 
+<div class="filters">
+  <span class="filters-title">Filtros</span>
+  <label>Mes
+    <select id="filtroMesCompras"><option value="todos">Todos los meses</option></select>
+  </label>
+  <button type="button" class="btn-ghost" id="btnLimpiarFiltrosCompras">Limpiar filtros</button>
+  <span class="periodo-label" id="periodoSeleccionadoLabelCompras">Período seleccionado: —</span>
+</div>
+
 <main>
 
   <section class="block">
     <h2>Resumen General</h2>
-    <div class="filters" style="padding:10px 16px; border:none; position:static; margin-bottom:14px;">
-      <label>Mes
-        <select id="filtroMesResumenCompras"><option value="todos">Todos (año completo)</option></select>
-      </label>
-      <button type="button" class="btn-ghost" id="btnLimpiarFiltrosResumenCompras">Limpiar filtros</button>
-    </div>
     <div class="kpi-row cols-4" id="kpiRowCompras"></div>
   </section>
 
   <section class="block">
     <h2>Distribución de Facturación</h2>
-    <p class="caption" style="padding:0 2px; margin:-2px 0 12px;">Participación de cada valor en el total facturado de <span id="anioTortasCompras">—</span>. Los valores con menor peso se agrupan en "Otros".</p>
+    <p class="caption" style="padding:0 2px; margin:-2px 0 12px;">Participación de cada categoría de compra en el total facturado por compras de <span id="anioTortasCompras">—</span>. Los valores con menor peso se agrupan en "Otros".</p>
     <div class="pie-grid">
       <div class="card">
         <div class="card-head">
@@ -675,13 +682,9 @@
         <div class="card-head">
           <h3>Monto Facturado por Mes</h3>
           <div class="toolbar">
-            <label style="font-size:12px; color:var(--text-secondary); display:flex; align-items:center; gap:6px;">Año
-              <select id="filtroAnioFacturas" class="btn-ghost" style="cursor:pointer;"></select>
-            </label>
             <button class="btn-ghost" data-toggle-table="chartFacturasMes">Ver tabla</button>
           </div>
         </div>
-        <p class="caption">Suma del Total Facturación por mes. Los filtros de abajo se combinan entre sí — podés usar varios a la vez.</p>
         <div class="filters" style="padding:6px 0 16px; border:none; position:static; margin-bottom:6px; background:transparent;">
           <label>Categoría <select id="filtroCatFactura"></select></label>
           <label>Categoría Macro <select id="filtroCatMacroFactura"></select></label>
@@ -721,7 +724,7 @@
     <h2>Costo Total (Sueldos + Compras)</h2>
     <div class="filters" style="padding:10px 16px; border:none; position:static; margin-bottom:14px;">
       <label>Mes
-        <select id="filtroMesCostos"><option value="todos">Todos (año completo)</option></select>
+        <select id="filtroMesCostos"><option value="todos">Todos los meses</option></select>
       </label>
       <button type="button" class="btn-ghost" id="btnLimpiarFiltrosCostos">Limpiar filtros</button>
     </div>
@@ -811,8 +814,8 @@
 
     // El header + la barra de módulos son sticky y su altura combinada depende
     // del contenido (logo, tamaño de letra) — se mide en vez de hardcodearla,
-    // para que el filtro de Categoría (sticky, dentro de Sueldos) quede
-    // pegado justo debajo sin superponerse ni dejar hueco.
+    // para que la barra de filtros sticky de cada hoja (Sueldos, Compras)
+    // quede pegada justo debajo sin superponerse ni dejar hueco.
     function ajustarStickyOffsets() {
       var header = document.querySelector('header.app-header');
       var tabsBar = document.getElementById('moduleTabs');
@@ -820,7 +823,7 @@
       var headerH = header.getBoundingClientRect().height;
       var tabsH = tabsBar.getBoundingClientRect().height;
       tabsBar.style.top = headerH + 'px';
-      document.querySelectorAll('#moduloSueldos > .filters').forEach(function (f) {
+      document.querySelectorAll('#moduloSueldos > .filters, #moduloCompras > .filters').forEach(function (f) {
         f.style.top = (headerH + tabsH) + 'px';
       });
     }
@@ -1553,23 +1556,28 @@
     { campo: 'area', label: 'Área' }
   ];
   var stateCompras = {
-    mesResumen: null,
-    anioFacturas: null,
+    // Único filtro de Mes para toda la hoja Compras (Resumen General, torta de
+    // Distribución de Facturación y Facturación por Mes) — mismo criterio que
+    // el filtro único de Sueldos (state.mes). Los 7 filtros de abajo (filtros)
+    // son independientes y se combinan con éste.
+    mes: null,
     filtros: { categoria: 'Todas', categoriaMacro: 'Todas', tipoItem: 'Todas', imputacionGestion: 'Todas', flujoFondos: 'Todas', comportamientoCosto: 'Todas', area: 'Todas' },
     desglosePor: 'categoriaMacro',
     valoresDesglose: {}, // {valor: boolean} — se reconstruye cada vez que cambia el "universo" (año/pre-filtros/variable)
     desgloseInfo: null   // {orden, colores, otrosSet, totales} — ranking y colores estables mientras no cambie el universo
   };
 
-  // Paleta categórica única para todo el módulo Compras — suave, opaca y
-  // desaturada (azul, naranja, aqua, ciruela, mostaza, verde, violeta, rojo),
-  // en vez de la paleta de marca IVC original que no se distinguía bien entre
-  // categorías. Verificada con el validador de daltonismo/contraste del skill
-  // de dataviz (node validate_palette.js) en vez de elegida a ojo.
+  // Paleta categórica única para todo el módulo Compras — derivada de la
+  // paleta que usa Sueldos (--sld-*), no de la paleta de marca IVC original.
+  // Los 8 tonos de Sueldos, tal cual, no pasaban el validador de daltonismo
+  // del skill de dataviz de forma general (leían "gris": croma muy baja) —
+  // se mantiene el mismo matiz de cada uno (mismo hue), pero con la croma y
+  // la luminosidad ajustadas lo mínimo necesario para que sí pasen. Verificada
+  // con el validador (node validate_palette.js) en vez de elegida a ojo.
   //
-  // Los primeros 4 tonos son EXACTAMENTE los mismos que usan los 4 gráficos de
+  // Los primeros 3 tonos (navy/teal/olive) son los que usan los 4 gráficos de
   // torta de "Distribución de Facturación" (PALETA_TORTA, más abajo) — así una
-  // categoría se ve del mismo color en la torta y en la barra apilada. Los 4
+  // categoría se ve del mismo color en la torta y en la barra apilada. Los 5
   // tonos siguientes extienden la paleta a 8 valores: esto es seguro acá porque
   // una barra apilada solo exige que los tonos VECINOS se distingan entre sí
   // (chequeo "adjacent"), un estándar más permisivo que el de las tortas.
@@ -1577,7 +1585,9 @@
   // Más allá de 8 valores distintos, el resto se agrupa en "Otros" (gris
   // neutro) en vez de generar más tonos — evita el "arcoíris" de segmentos
   // indistinguibles.
-  var PALETA_FACTURAS_EXT = ['#427dc2', '#d37149', '#37a67d', '#9c5590', '#d49b22', '#238522', '#5a4e9f', '#cd5958'];
+  // navy, teal, blue, blueLight, slate, sage, olive, pine — mismo orden y
+  // mismos nombres que usa Sueldos (--sld-*), croma/luminosidad ajustadas.
+  var PALETA_FACTURAS_EXT = ['#007295', '#1cb9cd', '#007399', '#37b7c8', '#006ca2', '#73b87d', '#30752a', '#5cba90'];
   var COLOR_OTROS_FACTURAS = '#898781';
 
   // Ventas — estado del filtro de Año + Meses (multi-selección) para la
@@ -1598,13 +1608,14 @@
   // del skill de dataviz al probarlo) — la elección correcta acá es un color
   // por identidad, no un gradiente. Reutiliza 6 tonos ya validados en este
   // mismo tablero para pares adyacentes (los primeros 6 de PALETA_FACTURAS_EXT,
-  // en el mismo orden), más el gris neutro ya establecido para "Otros".
-  var COLOR_POSTES_ALTA = '#427dc2';
-  var COLOR_POSTES_MEDIA = '#d37149';
-  var COLOR_POSTES_BAJA = '#37a67d';
-  var COLOR_CRUCETAS = '#9c5590';
-  var COLOR_MENSULAS = '#d49b22';
-  var COLOR_VINCULOS = '#238522';
+  // en el mismo orden — navy/teal/blue/blueLight/slate/sage), más el gris
+  // neutro ya establecido para "Otros".
+  var COLOR_POSTES_ALTA = '#007295';
+  var COLOR_POSTES_MEDIA = '#1cb9cd';
+  var COLOR_POSTES_BAJA = '#007399';
+  var COLOR_CRUCETAS = '#37b7c8';
+  var COLOR_MENSULAS = '#006ca2';
+  var COLOR_VINCULOS = '#73b87d';
   // Otros usa COLOR_OTROS_FACTURAS (definido arriba).
 
   // Rampas ordinales (un solo tono, claro→oscuro) para el desglose interno de
@@ -1617,32 +1628,42 @@
   // note aunque el matiz exacto varíe. Validadas con validateOrdinal(): las
   // 3 pasan Lightness monotone, ΔL >= 0.06, contraste del escalón más claro
   // >= 2:1 y un solo hue.
-  var RAMPA_CRUCETAS = ['#95598b', '#7c3771', '#5d1a54']; // Simple, Doble, Triple
-  var RAMPA_MENSULAS = ['#966800', '#7d4800'];             // Simple, Doble
-  var RAMPA_VINCULOS = ['#398536', '#006a00'];             // Doble, Triple
+  var RAMPA_CRUCETAS = ['#37b7c9', '#0094a9', '#006b80']; // Simple, Doble, Triple
+  var RAMPA_MENSULAS = ['#4c9acf', '#005e99'];             // Simple, Doble
+  var RAMPA_VINCULOS = ['#73b87d', '#1d7634'];             // Doble, Triple
 
   // Paleta para los gráficos de torta (Distribución de Facturación). Los gráficos
   // de torta son una forma "todos-contra-todos" (dos porciones cualquiera pueden
   // quedar lado a lado), lo que exige el chequeo de daltonismo más estricto —
   // muchísimo más exigente que el de barras apiladas de arriba (donde solo
-  // importan los pares vecinos). Estos 4 tonos —azul, naranja, aqua y ciruela—,
-  // más suaves y desaturados que la paleta por defecto pero sin caer en gris,
-  // fueron elegidos y verificados a propósito para pasar ese chequeo estricto
-  // los 4 juntos; un 5° tono ya no se logra distinguir de alguno de los otros
-  // ni para daltónicos ni para visión normal. Por eso, a partir del 5° valor por
-  // monto, se agrupan en "Otros" (gris neutro) en vez de sumar un tono más.
-  // (Son las mismas 4 primeras posiciones que PALETA_FACTURAS_EXT, arriba.)
-  var PALETA_TORTA = ['#427dc2', '#d37149', '#37a67d', '#9c5590'];
+  // importan los pares vecinos). Con solo 2 familias de matiz en la paleta de
+  // Sueldos (azules y verdes), el máximo que logra pasar ese chequeo estricto
+  // los 3 juntos es 3 tonos, no 4 (verificado por fuerza bruta con el
+  // validador: navy + teal + olive) — por eso acá se agrupa desde el 4° valor
+  // por monto en "Otros" (gris neutro), uno antes que con la paleta anterior.
+  // (Son las mismas 3 primeras posiciones útiles de PALETA_FACTURAS_EXT, arriba,
+  // salteando "blue", que es casi el mismo tono que "navy".)
+  var PALETA_TORTA = ['#007295', '#1cb9cd', '#30752a'];
+
+  // Paleta SOLO para el módulo Costos (torta de Composición del Costo y la
+  // barra de Costo por Mes), que combina "Sueldos" (COLOR_SUELDOS_COSTOS) con
+  // el desglose de Compras en el mismo gráfico. Ninguna combinación de la
+  // paleta de Sueldos (navy/teal/.../pine) pasa el chequeo "todos contra
+  // todos" junto a COLOR_SUELDOS_COSTOS (su verde-turquesa cae en la misma
+  // familia de verdes que "olive"/"pine" y colisiona con cualquiera de los 2
+  // — verificado con el validador) — se mantiene entonces la paleta anterior,
+  // ya validada a propósito para convivir con COLOR_SUELDOS_COSTOS, sin tocarla.
+  var PALETA_TORTA_COSTOS = ['#427dc2', '#d37149', '#37a67d', '#9c5590'];
 
   // Color de "Sueldos" en la torta y la barra de Costos. NO es la variable
   // --ivc-turquesa de marca (#008175): ese tono, verificado con el validador
   // de paletas de la guía de dataviz, no se distingue lo suficiente (falla el
   // piso de croma y, en el gráfico de torta, el chequeo "todos contra todos")
-  // frente al azul/verde de PALETA_TORTA una vez que conviven en el mismo
-  // gráfico categórico. Este verde-turquesa más saturado sí pasa el chequeo
-  // completo junto a los 4 tonos de PALETA_TORTA y sigue leyéndose como la
-  // misma familia de color de marca. --ivc-turquesa no se toca en ningún otro
-  // lado del tablero.
+  // frente al azul/verde de PALETA_TORTA_COSTOS una vez que conviven en el
+  // mismo gráfico categórico. Este verde-turquesa más saturado sí pasa el
+  // chequeo completo junto a los 4 tonos de PALETA_TORTA_COSTOS y sigue
+  // leyéndose como la misma familia de color de marca. --ivc-turquesa no se
+  // toca en ningún otro lado del tablero.
   var COLOR_SUELDOS_COSTOS = '#007658';
 
   // Color del segmento "Imputación estimada por dato faltante" en el gráfico
@@ -1744,28 +1765,34 @@
     var aniosFacturas = Array.from(new Set(RAW.facturas.map(function (f) { return f.anio; }))).sort(function (a, b) { return a - b; });
     anioOperativoCompras = aniosFacturas.length ? aniosFacturas[aniosFacturas.length - 1] : new Date().getFullYear();
 
-    var selMesResumenCompras = document.getElementById('filtroMesResumenCompras');
+    // Filtro de Mes único para toda la hoja Compras — reemplaza los 3 filtros
+    // de Mes/Año que existían antes por sección (Resumen General, el "Año" de
+    // Facturación por Mes, y las tortas fijas al año completo). Por defecto
+    // muestra el último mes con facturas cargadas; "Todos" muestra el año
+    // completo. Controla Resumen General, los 4 gráficos de torta de
+    // Distribución de Facturación y el gráfico de Facturación por Mes (este
+    // último combinado además con sus 7 filtros propios, que siguen aparte).
+    var selMesCompras = document.getElementById('filtroMesCompras');
     MESES_DISPLAY.forEach(function (m, i) {
-      var o = document.createElement('option'); o.value = i; o.textContent = m; selMesResumenCompras.appendChild(o);
+      var o = document.createElement('option'); o.value = i; o.textContent = m; selMesCompras.appendChild(o);
     });
     var facturasAnioOp = RAW.facturas.filter(function (f) { return f.anio === anioOperativoCompras; });
-    var mesResumenComprasDefault = facturasAnioOp.length
+    var mesComprasDefault = facturasAnioOp.length
       ? Math.max.apply(null, facturasAnioOp.map(function (f) { return f.mesIdx; }))
       : new Date().getMonth();
-    stateCompras.mesResumen = mesResumenComprasDefault;
-    selMesResumenCompras.value = mesResumenComprasDefault;
-    selMesResumenCompras.addEventListener('change', function () { stateCompras.mesResumen = selMesResumenCompras.value === 'todos' ? 'todos' : Number(selMesResumenCompras.value); renderKpisCompras(); });
-    document.getElementById('btnLimpiarFiltrosResumenCompras').addEventListener('click', function () {
-      stateCompras.mesResumen = 'todos'; selMesResumenCompras.value = 'todos'; renderKpisCompras();
+    stateCompras.mes = mesComprasDefault;
+    selMesCompras.value = mesComprasDefault;
+    actualizarPeriodoSeleccionadoCompras();
+    selMesCompras.addEventListener('change', function () {
+      stateCompras.mes = selMesCompras.value === 'todos' ? 'todos' : Number(selMesCompras.value);
+      actualizarPeriodoSeleccionadoCompras();
+      renderComprasAll();
     });
-
-    var selAnioFacturas = document.getElementById('filtroAnioFacturas');
-    aniosFacturas.forEach(function (a) {
-      var o = document.createElement('option'); o.value = a; o.textContent = a; selAnioFacturas.appendChild(o);
+    document.getElementById('btnLimpiarFiltrosCompras').addEventListener('click', function () {
+      stateCompras.mes = 'todos'; selMesCompras.value = 'todos';
+      actualizarPeriodoSeleccionadoCompras();
+      renderComprasAll();
     });
-    stateCompras.anioFacturas = anioOperativoCompras;
-    selAnioFacturas.value = anioOperativoCompras;
-    selAnioFacturas.addEventListener('change', function () { stateCompras.anioFacturas = Number(selAnioFacturas.value); actualizarDesgloseFacturas(); });
 
     FILTROS_FACTURA_CAMPOS.forEach(function (f) {
       var sel = document.getElementById(f.selectId);
@@ -2450,6 +2477,24 @@
     }
   }
 
+  // Mismo criterio, para la barra de filtros de Compras.
+  function actualizarPeriodoSeleccionadoCompras() {
+    var el = document.getElementById('periodoSeleccionadoLabelCompras');
+    if (!el) return;
+    if (stateCompras.mes === 'todos') {
+      el.textContent = 'Período seleccionado: Todos los meses de ' + anioOperativoCompras;
+    } else {
+      el.textContent = 'Período seleccionado: ' + MESES_DISPLAY[stateCompras.mes] + ' ' + anioOperativoCompras;
+    }
+  }
+
+  // Texto de período corto ("2026" / "Agosto 2026") para la leyenda de
+  // Distribución de Facturación.
+  function textoPeriodoCompras() {
+    if (anioOperativoCompras == null) return '—';
+    return stateCompras.mes === 'todos' ? String(anioOperativoCompras) : (MESES_DISPLAY[stateCompras.mes] + ' ' + anioOperativoCompras);
+  }
+
   // Ícono de información (ⓘ) para el título de un KPI — hover o click muestran
   // una burbuja con el texto de t.info. El listener a nivel de documento (que
   // cierra cualquier burbuja abierta al hacer click afuera) se agrega una
@@ -3007,9 +3052,10 @@
     actualizarDesgloseFacturas();
   }
 
-  // 4 gráficos de torta fijos (no siguen los filtros de "Facturación por Mes":
-  // muestran el panorama completo del año vigente, igual que el criterio ya
-  // usado en Resumen General).
+  // 4 gráficos de torta que siguen el filtro único de Mes de la barra de
+  // arriba (igual que el resto de Compras), pero no los 7 filtros propios de
+  // "Facturación por Mes": muestran el panorama completo del período elegido
+  // arriba, sin recortarlo más por categoría/tipo/área, etc.
   var TORTAS_COMPRAS = [
     { campo: 'categoria', chartId: 'pieCategoria' },
     { campo: 'subcategoria', chartId: 'pieSubcategoria' },
@@ -3019,12 +3065,16 @@
 
   function renderTortasCompras() {
     var anioLbl = document.getElementById('anioTortasCompras');
-    if (anioLbl) anioLbl.textContent = anioOperativoCompras != null ? anioOperativoCompras : '—';
+    if (anioLbl) anioLbl.textContent = textoPeriodoCompras();
 
-    var delAnio = RAW.facturas.filter(function (f) { return f.anio === anioOperativoCompras; });
+    var delPeriodo = RAW.facturas.filter(function (f) {
+      if (f.anio !== anioOperativoCompras) return false;
+      if (stateCompras.mes !== 'todos' && f.mesIdx !== stateCompras.mes) return false;
+      return true;
+    });
 
     TORTAS_COMPRAS.forEach(function (t) {
-      var info = construirDesgloseInfo(delAnio, t.campo, PALETA_TORTA);
+      var info = construirDesgloseInfo(delPeriodo, t.campo, PALETA_TORTA);
       var items = info.orden.map(function (v) {
         return { label: etiquetaValorDesglose(v), value: info.totales[v], color: info.colores[v] };
       });
@@ -3044,11 +3094,16 @@
     return lista.reduce(function (s, f) { return s + f.total; }, 0);
   }
 
+  // Mismo criterio de tarjeta que renderKpis (Sueldos): Título (+ ícono de
+  // información si hace falta aclarar algo) → Valor → Detalle (renglón
+  // siempre reservado, aunque esté vacío, para que todas las tarjetas de la
+  // fila queden a la misma altura) → Período →, si aplica, una caja celeste
+  // con la comparación contra el mes anterior.
   function renderKpisCompras() {
     var wrap = document.getElementById('kpiRowCompras');
     wrap.innerHTML = '';
-    var esTodos = stateCompras.mesResumen === 'todos';
-    var mesRef = stateCompras.mesResumen;
+    var esTodos = stateCompras.mes === 'todos';
+    var mesRef = stateCompras.mes;
     var mesRefNombre = esTodos ? null : MESES_DISPLAY[mesRef];
 
     var delMesRef = esTodos
@@ -3060,9 +3115,8 @@
     var totalMesAnterior = sumaTotalFacturado(delMesAnterior);
     var deltaTotal = [];
     if (!esTodos && mesRef > 0) {
-      var diff = totalMesRef - totalMesAnterior;
-      var signo = diff > 0 ? '+' : (diff < 0 ? '−' : '');
-      deltaTotal.push((diff === 0 ? 'Sin cambios' : signo + formatMoney(Math.abs(diff))) + ' vs. mes anterior');
+      var deltaTxt = formatDeltaMoney(totalMesRef - totalMesAnterior, 'respecto del mes anterior');
+      if (deltaTxt) deltaTotal.push(deltaTxt);
     }
 
     // Pendiente de pago: estado actual, no depende del mes elegido arriba
@@ -3076,32 +3130,56 @@
     var proveedorPrincipal = proveedores.length ? proveedores[0] : null;
 
     var periodoLbl = esTodos ? ('Año completo ' + anioOperativoCompras) : (mesRefNombre + ' ' + anioOperativoCompras);
-    var periodoLblCorto = esTodos ? ('en ' + anioOperativoCompras) : ('en ' + mesRefNombre);
 
     var tiles = [
-      { label: esTodos ? 'Total Facturado en el Año' : 'Total Facturado del Mes', value: formatMoney(totalMesRef), sub: periodoLbl, deltas: deltaTotal },
-      { label: esTodos ? 'Cantidad de Facturas en el Año' : 'Cantidad de Facturas del Mes', value: formatNum(delMesRef.length), sub: 'Facturas registradas ' + periodoLblCorto },
-      { label: 'Pendiente de Pago', value: formatMoney(montoPendiente), sub: 'Total no pagado a hoy (' + formatNum(pendientes.length) + ' facturas, todas las fechas)' },
+      {
+        label: esTodos ? 'Total Facturado por Compras en el Año' : 'Total Facturado por Compras del Mes',
+        value: formatMoney(totalMesRef),
+        periodo: periodoLbl,
+        deltaBox: deltaTotal
+      },
+      {
+        label: esTodos ? 'Cantidad de Facturas de Compras en el Año' : 'Cantidad de Facturas de Compras del Mes',
+        value: formatNum(delMesRef.length),
+        detail: 'Facturas registradas',
+        periodo: periodoLbl
+      },
+      {
+        label: 'Pendiente de Pago',
+        value: formatMoney(montoPendiente),
+        detail: formatNum(pendientes.length) + ' facturas pendientes',
+        info: 'No depende del mes elegido arriba: es el total no pagado a día de hoy, de facturas de cualquier fecha.'
+      },
       {
         label: esTodos ? 'Proveedor Principal del Año' : 'Proveedor Principal del Mes',
         value: proveedorPrincipal || '—',
         valueClass: proveedorPrincipal ? 'text-value' : '',
-        sub: proveedorPrincipal ? (formatMoney(porProveedor[proveedorPrincipal]) + ' facturados ' + periodoLblCorto) : ('Sin facturas ' + periodoLblCorto)
+        detail: proveedorPrincipal ? (formatMoney(porProveedor[proveedorPrincipal]) + ' facturados') : 'Sin facturas',
+        periodo: periodoLbl
       }
     ];
     tiles.forEach(function (t) {
       var d = document.createElement('div'); d.className = 'kpi-tile';
-      var l = document.createElement('div'); l.className = 'label'; l.textContent = t.label;
+      var l = document.createElement('div'); l.className = 'label';
+      var lTxt = document.createElement('span'); lTxt.textContent = t.label;
+      l.appendChild(lTxt);
+      if (t.info) l.appendChild(kpiInfoIcon(t.info));
       var v = document.createElement('div'); v.className = 'value' + (t.valueClass ? ' ' + t.valueClass : ''); v.textContent = t.value;
       d.appendChild(l); d.appendChild(v);
-      if (t.sub) {
-        var s = document.createElement('div'); s.className = 'sub'; s.textContent = t.sub;
-        d.appendChild(s);
+      var det = document.createElement('div'); det.className = 'sub'; det.textContent = t.detail || ' ';
+      if (!t.detail) det.setAttribute('aria-hidden', 'true');
+      d.appendChild(det);
+      if (t.periodo) {
+        var per = document.createElement('div'); per.className = 'periodo'; per.textContent = t.periodo;
+        d.appendChild(per);
       }
-      if (t.deltas && t.deltas.length) {
-        var dl = document.createElement('div'); dl.className = 'deltas';
-        dl.textContent = t.deltas.join(' · ');
-        d.appendChild(dl);
+      if (t.deltaBox && t.deltaBox.length) {
+        var box = document.createElement('div'); box.className = 'kpi-delta-box';
+        t.deltaBox.forEach(function (txt) {
+          var row = document.createElement('div'); row.className = 'kpi-delta-row'; row.textContent = txt;
+          box.appendChild(row);
+        });
+        d.appendChild(box);
       }
       wrap.appendChild(d);
     });
@@ -3111,10 +3189,17 @@
   // TODOS los filtros activos a la vez (los que están en "Todas" no restringen).
   // Facturas pre-filtradas por Año + los 7 filtros combinables (Y lógico) —
   // esta es la base sobre la que se arma el desglose y se calculan totales.
+  //
+  // A propósito NO se filtra acá por el Mes de la barra de arriba (a
+  // diferencia de KPIs y Distribución de Facturación, que sí lo siguen):
+  // "Facturación por Mes" es un gráfico de tendencia — si se recortara a un
+  // solo mes quedaría una sola columna, perdiendo el sentido de comparar mes a
+  // mes (mismo criterio que ya usan los gráficos "por mes" de Sueldos, que en
+  // vez de recortarse resaltan la columna del mes elegido — ver emphasisIndex
+  // en renderFacturasMes).
   function facturasPreFiltradas() {
-    var anio = stateCompras.anioFacturas;
     return RAW.facturas.filter(function (f) {
-      if (f.anio !== anio) return false;
+      if (f.anio !== anioOperativoCompras) return false;
       return FILTROS_FACTURA_CAMPOS.every(function (fc) {
         var val = stateCompras.filtros[fc.campo];
         return val === 'Todas' || f[fc.campo] === val;
@@ -3229,9 +3314,13 @@
       };
     });
 
+    // El Mes de la barra de filtros de arriba no recorta este gráfico (ver
+    // facturasPreFiltradas): en cambio resalta esa columna y atenúa el resto,
+    // mismo criterio que los gráficos "por mes" de Sueldos.
     renderBarChart(chartEl, cats, series, {
       stacked: true, stackTotals: true, hideLegend: true, totalBadge: true,
-      valueFormatter: formatCompact, tooltipFormatter: formatMoney
+      valueFormatter: formatCompact, tooltipFormatter: formatMoney,
+      emphasisIndex: emphasisIndexForValue(meses, stateCompras.mes)
     });
 
     var seriesActivas = series.filter(function (s, i) { return stateCompras.valoresDesglose[info.orden[i]]; });
@@ -3371,14 +3460,15 @@
   // del mes elegido en el filtro "Mes" de arriba (stateCostos.mesResumen) —
   // el mismo mes que usan los KPI de "Costo Total del Mes". Es un gráfico de
   // torta ("todos contra todos": dos porciones cualquiera pueden terminar
-  // lado a lado), así que usa PALETA_TORTA (4 tonos, verificados para ese
-  // chequeo estricto) y NO la paleta extendida de 8 tonos que usan las
-  // barras apiladas — con 5+ colores en una torta, el validador de la guía
-  // de dataviz encuentra pares que no se distinguen. Por eso acá el tope de
-  // macrocategorías "propias" es 4 (no 8): de la 5ta en adelante se agrupan
-  // en "Otros", igual que en los otros 4 gráficos de torta de Compras (esos
-  // sí muestran el año completo — acá se decidió seguir el mes en vez del
-  // año porque es lo que pidió Rocío).
+  // lado a lado), así que usa PALETA_TORTA_COSTOS (4 tonos, verificados para
+  // ese chequeo estricto JUNTO A COLOR_SUELDOS_COSTOS — la paleta de Sueldos
+  // no lo logra, ver comentario junto a esa constante) y NO la paleta
+  // extendida de 8 tonos que usan las barras apiladas — con 5+ colores en una
+  // torta, el validador de la guía de dataviz encuentra pares que no se
+  // distinguen. Por eso acá el tope de macrocategorías "propias" es 4 (no 8):
+  // de la 5ta en adelante se agrupan en "Otros", igual que en los otros 4
+  // gráficos de torta de Compras (esos sí muestran el año completo — acá se
+  // decidió seguir el mes en vez del año porque es lo que pidió Rocío).
   function construirComposicionCosto(anio, mesIdx) {
     var totalSueldos = costoSueldosMes(anio, mesIdx);
 
@@ -3390,7 +3480,7 @@
     });
     var macros = Object.keys(totalesPorMacro).sort(function (a, b) { return totalesPorMacro[b] - totalesPorMacro[a]; });
 
-    var paleta = PALETA_TORTA;
+    var paleta = PALETA_TORTA_COSTOS;
     var cap = paleta.length;
     var directos, resto;
     if (macros.length <= cap) { directos = macros; resto = []; }
@@ -3469,7 +3559,7 @@
     var MONTO_IMPUTACION_COSTOS = 100000000;
     var series = [
       { name: 'Sueldos', color: COLOR_SUELDOS_COSTOS, values: meses.map(function (m) { return costoSueldosMes(anio, m); }) },
-      { name: 'Compras', color: PALETA_TORTA[0], values: meses.map(function (m) { return costoComprasMes(anio, m); }) },
+      { name: 'Compras', color: PALETA_TORTA_COSTOS[0], values: meses.map(function (m) { return costoComprasMes(anio, m); }) },
       {
         name: 'Imputación estimada por dato faltante', color: COLOR_IMPUTACION_COSTOS, hollow: true,
         values: meses.map(function (m) { return MESES_IMPUTACION_COSTOS.indexOf(m) >= 0 ? MONTO_IMPUTACION_COSTOS : 0; })
