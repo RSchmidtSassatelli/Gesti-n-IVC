@@ -106,31 +106,50 @@
   }
   header .status.error .dot { background: #d03b3b; }
 
+  /* Barra de navegación como "bandeja" de botones independientes (en vez del
+     subrayado plano de antes): fondo --page-plane (el mismo gris-azulado del
+     fondo de página) para que cada pestaña, en blanco/con relleno propio,
+     resalte por contraste — mismo lenguaje visual que los .btn-ghost del
+     resto del tablero (fondo sólido --ivc-turquesa + texto blanco = activo),
+     solo que a mayor escala por ser la navegación principal. */
   nav.module-tabs {
-    background: var(--surface-1);
+    background: var(--page-plane);
     border-bottom: 3px solid var(--ivc-azul-muy-oscuro);
-    padding: 0 24px;
+    padding: 10px 24px;
     display: flex;
-    gap: 4px;
+    gap: 10px;
     position: sticky;
     z-index: 20;
+    /* En pantallas angostas, los botones ahora más grandes pueden no entrar
+       todos — permite deslizar horizontalmente en vez de recortarlos sin
+       aviso (en desktop, con espacio de sobra, esto no cambia nada). */
+    overflow-x: auto;
   }
   nav.module-tabs .module-tab {
     font-family: inherit;
     font-size: 14px;
     font-weight: 600;
     color: var(--text-secondary);
-    background: none;
-    border: none;
-    border-bottom: 3px solid transparent;
-    margin-bottom: -3px;
-    padding: 12px 14px 10px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 10px 18px;
     cursor: pointer;
+    box-shadow: 0 1px 2px rgba(11,11,11,0.05);
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
-  nav.module-tabs .module-tab:hover { color: var(--ivc-azul-oscuro); }
+  nav.module-tabs .module-tab:hover {
+    color: var(--ivc-azul-oscuro);
+    border-color: var(--ivc-turquesa);
+    box-shadow: 0 1px 4px rgba(11,11,11,0.09);
+  }
   nav.module-tabs .module-tab.active {
-    color: var(--ivc-turquesa);
-    border-bottom-color: var(--ivc-turquesa);
+    color: #fff;
+    background: var(--ivc-turquesa);
+    border-color: var(--ivc-turquesa);
+    box-shadow: 0 1px 4px rgba(0,129,117,0.35);
   }
 
   .modulo-panel.hidden { display: none; }
@@ -355,6 +374,55 @@
   .pie-legend-item .pie-legend-value { color: var(--text-muted); white-space: nowrap; }
   .pie-legend-item .pie-legend-pct { font-weight: 600; color: var(--text-primary); white-space: nowrap; min-width: 32px; text-align: right; }
 
+  /* Variante horizontal — solo para la torta "Costo Total por Componente" de
+     Costos (es la única torta de esa sección, así que aprovecha el ancho
+     completo de la card en vez del layout apilado de las 4 tortas de
+     Compras): leyenda agrupada y alineada a la izquierda, torta más grande
+     a la derecha, para darle más protagonismo visual. */
+  .pie-card-body--destacada {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+  }
+  .pie-card-body--destacada .pie-legend {
+    order: 1;
+    width: auto;
+    flex: 0 1 auto;
+    max-width: none;
+    margin-top: 0;
+    /* Grid en vez de columna flex: las 4 celdas de cada fila (color, nombre,
+       monto, %) se vuelven ítems directos de este grid (ver display:contents
+       más abajo), así el ancho de cada columna se ajusta sola al contenido
+       más ancho de esa columna en TODAS las filas — el monto queda pegado
+       al nombre más largo, en vez de quedar empujado al borde derecho de la
+       leyenda por el flex:1 que usan las otras tortas. */
+    display: grid;
+    grid-template-columns: auto auto auto auto;
+    column-gap: 14px;
+    row-gap: 7px;
+    align-items: center;
+  }
+  .pie-card-body--destacada .pie-legend-item {
+    display: contents;
+    font-size: 13px;
+  }
+  .pie-card-body--destacada .pie-legend-item .pie-legend-label { flex: initial; text-align: left; }
+  .pie-card-body--destacada .pie-legend-item .pie-legend-value { text-align: right; }
+  .pie-card-body--destacada .pie-legend-item .pie-legend-pct { min-width: 0; }
+  .pie-card-body--destacada .chart-holder {
+    order: 2;
+    flex: 0 0 auto;
+    max-width: 260px;
+  }
+  @media (max-width: 640px) {
+    .pie-card-body--destacada { flex-direction: column; }
+    .pie-card-body--destacada .pie-legend { display: flex; flex-direction: column; }
+    .pie-card-body--destacada .pie-legend-item { display: flex; }
+    .pie-card-body--destacada .pie-legend,
+    .pie-card-body--destacada .chart-holder { order: initial; width: 100%; max-width: 208px; }
+  }
+
   #tooltip {
     position: fixed; display: none; z-index: 100; pointer-events: none;
     background: var(--ivc-azul-muy-oscuro); color: #fff; border-radius: 8px;
@@ -548,28 +616,31 @@
 
 <div id="moduloVentas" class="modulo-panel hidden">
 
+<div class="filters">
+  <span class="filters-title">Filtros</span>
+  <label>Año
+    <select id="filtroAnioVentas" class="btn-ghost" style="cursor:pointer;"></select>
+  </label>
+  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+    <span style="font-size:12px; color:var(--text-secondary);">Meses</span>
+    <button type="button" class="btn-ghost" id="btnMesesVentasTodos">Todos</button>
+    <div id="filtroMesesVentas" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+  </div>
+  <button type="button" class="btn-ghost" id="btnLimpiarFiltrosVentas">Limpiar filtros</button>
+  <span class="periodo-label" id="periodoSeleccionadoLabelVentas">Período seleccionado: —</span>
+</div>
+
 <main>
 
   <section class="block">
-    <h2>Ventas — Conexión de Datos</h2>
-    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Los indicadores y gráficos de Ventas todavía no están armados — eso viene en el próximo paso. Por ahora este panel solo confirma que las dos fuentes (Registro de Remitos y Registro de Facturas Ventas) se están leyendo bien. <span id="ventasConexionMsg">Conectando…</span></p>
+    <h2>Resumen General</h2>
+    <p class="caption" id="ventasConexionMsg" style="padding:0 2px; margin:-6px 0 14px; display:none;"></p>
     <div class="kpi-row" id="kpiRowVentasConexion"></div>
   </section>
 
   <section class="block">
     <h2>Análisis de Productos Vendidos</h2>
-    <div class="filters" style="padding:10px 16px; border:none; position:static; margin-bottom:14px; flex-wrap:wrap;">
-      <label>Año
-        <select id="filtroAnioVentas" class="btn-ghost" style="cursor:pointer;"></select>
-      </label>
-      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-        <span style="font-size:12px; color:var(--text-secondary);">Meses</span>
-        <button type="button" class="btn-ghost" id="btnMesesVentasTodos">Todos</button>
-        <div id="filtroMesesVentas" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
-      </div>
-      <button type="button" class="btn-ghost" id="btnLimpiarFiltrosVentas">Limpiar filtros</button>
-    </div>
-    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Cantidad de unidades despachadas (Registro de Remitos), agrupadas por nivel de Tensión para Postes, más Crucetas, Ménsulas y Vínculos como familias propias — todo lo que no entra en ninguna de esas se agrupa en "Otros". Responde al filtro de Año y Meses de arriba; podés elegir uno o varios meses.</p>
+    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Cantidad de unidades despachadas según el Registro de Remitos. Los Postes se agrupan por nivel de tensión, mientras que Crucetas, Ménsulas y Vínculos se muestran como categorías independientes. Los productos restantes se agrupan en "Otros". La información se actualiza según el Año y los Meses seleccionados.</p>
     <div class="cards">
       <div class="card full">
         <div class="card-head">
@@ -581,10 +652,10 @@
       </div>
       <div class="card full">
         <div class="card-head">
-          <h3>Evolución Mensual por Familia</h3>
+          <h3>Evolución Mensual por Categoría</h3>
           <div class="toolbar"><button class="btn-ghost" data-toggle-table="chartEvolucionVentas">Ver tabla</button></div>
         </div>
-        <p class="caption">Elegí una familia de producto: si tiene niveles internos (Tensión para Postes; Simple/Doble/Triple para Crucetas, Ménsulas y Vínculos), la columna de cada mes se divide en esos niveles.</p>
+        <p class="caption">Muestra la evolución mensual de la categoría de producto seleccionada. Cuando la categoría tiene subcategorías, cada mes se desagrega por nivel: Tensión en Postes y Simple/Doble/Triple en Crucetas, Ménsulas y Vínculos.</p>
         <div class="toolbar" style="margin-bottom:10px; flex-wrap:wrap;">
           <button class="btn-ghost active" data-familia-tab="postes">Postes</button>
           <button class="btn-ghost" data-familia-tab="crucetas">Crucetas</button>
@@ -718,36 +789,44 @@
 
 <div id="moduloCostos" class="modulo-panel hidden">
 
+<div class="filters">
+  <span class="filters-title">Filtros</span>
+  <label>Mes
+    <select id="filtroMesCostos"><option value="todos">Todos los meses</option></select>
+  </label>
+  <button type="button" class="btn-ghost" id="btnLimpiarFiltrosCostos">Limpiar filtros</button>
+  <span class="periodo-label" id="periodoSeleccionadoLabelCostos">Período seleccionado: —</span>
+</div>
+
 <main>
 
   <section class="block">
-    <h2>Costo Total (Sueldos + Compras)</h2>
-    <div class="filters" style="padding:10px 16px; border:none; position:static; margin-bottom:14px;">
-      <label>Mes
-        <select id="filtroMesCostos"><option value="todos">Todos los meses</option></select>
-      </label>
-      <button type="button" class="btn-ghost" id="btnLimpiarFiltrosCostos">Limpiar filtros</button>
-    </div>
-    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Costo Total = costo de Sueldos (haberes + aportes y contribuciones) + Total Facturación de Compras. "Por día" usa días hábiles (lunes a viernes, sin descontar feriados); "por hora" usa las horas trabajadas cargadas en Sueldos.</p>
+    <h2>Resumen General por Mes</h2>
+    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Muestra el costo total por mes y su equivalente promedio por día hábil y por hora trabajada.</p>
     <div class="kpi-row" id="kpiRowCostosTotal"></div>
+    <p class="caption" style="padding:0 2px; margin:14px 2px 0; font-size:12px; line-height:1.7;">
+      <strong>Costo Total:</strong> Sueldos (haberes + aportes + contribuciones) + Total Facturación de Compras.<br>
+      <strong>Costo por Día:</strong> comprende días hábiles (lunes a viernes, sin descontar feriados).<br>
+      <strong>Costo por Hora:</strong> utiliza las horas trabajadas cargadas en la planilla de sueldos.
+    </p>
   </section>
 
   <section class="block">
     <h2>Promedios del Año (Enero&nbsp;–&nbsp;<span id="mesPromedioCostosLabel">—</span>)</h2>
-    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Se calculan sobre la suma acumulada del período, no como promedio de los promedios mensuales — así un mes con menos días u horas no distorsiona el resultado.</p>
+    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Muestran cuánto costó, en promedio, un mes, un día hábil y una hora de trabajo considerando todo el período enero–<span id="mesPromedioCostosLabelCaption">—</span>.</p>
     <div class="kpi-row" id="kpiRowCostosPromedio"></div>
   </section>
 
   <section class="block">
     <h2>Composición del Costo Total</h2>
-    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Participación de Sueldos y de cada macrocategoría de Compras dentro del costo total de <span id="periodoComposicionCosto">—</span> — sigue el filtro de Mes de arriba. Las macrocategorías con menor peso se agrupan en "Otros".</p>
+    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Participación de Sueldos y de cada macrocategoría de Compras dentro del costo total de <span id="periodoComposicionCosto">—</span>. Las macrocategorías con menor peso se agrupan en "Otros".</p>
     <div class="pie-grid">
       <div class="card">
         <div class="card-head">
           <h3>Costo Total por Componente (Sueldos + Compras)</h3>
           <button class="btn-ghost" data-toggle-table="pieComposicionCosto">Ver tabla</button>
         </div>
-        <div class="pie-card-body">
+        <div class="pie-card-body pie-card-body--destacada">
           <div class="chart-holder" id="pieComposicionCosto"></div>
           <div class="pie-legend" id="pieComposicionCosto-legend"></div>
         </div>
@@ -814,7 +893,7 @@
 
     // El header + la barra de módulos son sticky y su altura combinada depende
     // del contenido (logo, tamaño de letra) — se mide en vez de hardcodearla,
-    // para que la barra de filtros sticky de cada hoja (Sueldos, Compras)
+    // para que la barra de filtros sticky de cada hoja (Sueldos, Compras, Costos)
     // quede pegada justo debajo sin superponerse ni dejar hueco.
     function ajustarStickyOffsets() {
       var header = document.querySelector('header.app-header');
@@ -823,7 +902,7 @@
       var headerH = header.getBoundingClientRect().height;
       var tabsH = tabsBar.getBoundingClientRect().height;
       tabsBar.style.top = headerH + 'px';
-      document.querySelectorAll('#moduloSueldos > .filters, #moduloCompras > .filters').forEach(function (f) {
+      document.querySelectorAll('#moduloSueldos > .filters, #moduloCompras > .filters, #moduloCostos > .filters, #moduloVentas > .filters').forEach(function (f) {
         f.style.top = (headerH + tabsH) + 'px';
       });
     }
@@ -1121,8 +1200,16 @@
     var band = plotW / categories.length;
     var barR = 3;
     var barMax = 24;
+    // opts.emphasisIndex acepta un índice único (Sueldos/Compras/Costos, un
+    // solo Mes seleccionable) o un array de índices (Ventas, que permite
+    // elegir varios meses a la vez) — sin emphasisIndex, todo queda al 100%.
+    function indiceEnfatizado(i) {
+      if (opts.emphasisIndex == null) return true;
+      if (Array.isArray(opts.emphasisIndex)) return opts.emphasisIndex.indexOf(i) !== -1;
+      return opts.emphasisIndex === i;
+    }
     function catOpacity(i) {
-      return (opts.emphasisIndex == null || opts.emphasisIndex === i) ? 1 : 0.3;
+      return indiceEnfatizado(i) ? 1 : 0.3;
     }
 
     if (stacked) {
@@ -1160,14 +1247,14 @@
         if (opts.stackTotals && acc > 0) {
           var totalFmt = opts.totalFormatter || fmt;
           var tl = el('text', { x: i * band + band / 2, y: yScale(acc) - 8, 'text-anchor': 'middle', class: 'end-label' });
-          if (opts.emphasisIndex === i) { tl.setAttribute('font-weight', '700'); }
+          if (indiceEnfatizado(i) && opts.emphasisIndex != null) { tl.setAttribute('font-weight', '700'); }
           tl.textContent = totalFmt(acc);
           tl.setAttribute('opacity', catOpacity(i));
           plot.appendChild(tl);
           if (opts.totalBadge) totalLabelEls.push(tl);
         }
         var xl = el('text', { x: i * band + band / 2, y: plotH + 18, 'text-anchor': 'middle' });
-        if (opts.emphasisIndex === i) { xl.setAttribute('font-weight', '700'); xl.setAttribute('fill', 'var(--text-primary)'); }
+        if (indiceEnfatizado(i) && opts.emphasisIndex != null) { xl.setAttribute('font-weight', '700'); xl.setAttribute('fill', 'var(--text-primary)'); }
         xl.textContent = cat;
         plot.appendChild(xl);
       });
@@ -1192,7 +1279,7 @@
           plot.appendChild(rect);
         });
         var xl = el('text', { x: i * band + band / 2, y: plotH + 18, 'text-anchor': 'middle' });
-        if (opts.emphasisIndex === i) { xl.setAttribute('font-weight', '700'); xl.setAttribute('fill', 'var(--text-primary)'); }
+        if (indiceEnfatizado(i) && opts.emphasisIndex != null) { xl.setAttribute('font-weight', '700'); xl.setAttribute('fill', 'var(--text-primary)'); }
         xl.textContent = cat;
         plot.appendChild(xl);
       });
@@ -1590,10 +1677,12 @@
   var PALETA_FACTURAS_EXT = ['#007295', '#1cb9cd', '#007399', '#37b7c8', '#006ca2', '#73b87d', '#30752a', '#5cba90'];
   var COLOR_OTROS_FACTURAS = '#898781';
 
-  // Ventas — estado del filtro de Año + Meses (multi-selección) para la
-  // sección "Análisis de Productos Vendidos". Es independiente del panel de
-  // "Conexión de Datos" de arriba, que se mantiene siempre global (muestra el
-  // estado real de la conexión, no debe cambiar según lo que el usuario filtre).
+  // Ventas — estado del filtro de Año + Meses (multi-selección), compartido
+  // por el "Resumen General" (KPI) y "Análisis de Productos Vendidos" de
+  // abajo. "Último Remito/Factura Cargado" son la única excepción: siempre
+  // muestran la fecha más reciente de TODO lo cargado, sin filtrar (ver
+  // renderKpisResumenVentas) — son un chequeo de que la conexión está al día,
+  // no un KPI del período elegido.
   var anioOperativoVentas = null; // último año con remitos cargados
   var stateVentas = { anio: null, meses: null, familiaEvolucion: 'postes' }; // meses: null = todos los meses del año elegido
 
@@ -1647,24 +1736,30 @@
 
   // Paleta SOLO para el módulo Costos (torta de Composición del Costo y la
   // barra de Costo por Mes), que combina "Sueldos" (COLOR_SUELDOS_COSTOS) con
-  // el desglose de Compras en el mismo gráfico. Ninguna combinación de la
-  // paleta de Sueldos (navy/teal/.../pine) pasa el chequeo "todos contra
-  // todos" junto a COLOR_SUELDOS_COSTOS (su verde-turquesa cae en la misma
-  // familia de verdes que "olive"/"pine" y colisiona con cualquiera de los 2
-  // — verificado con el validador) — se mantiene entonces la paleta anterior,
-  // ya validada a propósito para convivir con COLOR_SUELDOS_COSTOS, sin tocarla.
-  var PALETA_TORTA_COSTOS = ['#427dc2', '#d37149', '#37a67d', '#9c5590'];
+  // el desglose de Compras en el mismo gráfico "todos contra todos" (torta).
+  // Antes, Costos era la única excepción a la paleta categórica 2026-09: el
+  // verde-turquesa histórico de Sueldos colisionaba con cualquier combinación
+  // de la paleta nueva bajo ese chequeo estricto. Se resolvió unificando:
+  // "Sueldos" pasa a ser olive (el mismo verde de PALETA_TORTA/PALETA_TORTA_COSTOS,
+  // no un tono aparte), y Compras reutiliza navy+teal de esa misma terna — por
+  // fuerza bruta, el máximo de tonos de la paleta de marca que pasa el chequeo
+  // "todos contra todos" es 3, y las 12 combinaciones que lo logran requieren
+  // siempre olive. Costos ya no es una excepción documentada: usa exactamente
+  // PALETA_TORTA (ver arriba) para sus 2 primeras categorías de Compras, y
+  // COLOR_SUELDOS_COSTOS toma la 3ª (olive) para "Sueldos". Trade-off aceptado:
+  // la torta de Composición del Costo Total cae de 4 a 2 categorías directas de
+  // Compras (antes de agrupar en "Otros"), una menos que con la paleta anterior.
+  var PALETA_TORTA_COSTOS = ['#007295', '#1cb9cd']; // navy, teal — Compras (macro-categorías)
 
-  // Color de "Sueldos" en la torta y la barra de Costos. NO es la variable
-  // --ivc-turquesa de marca (#008175): ese tono, verificado con el validador
-  // de paletas de la guía de dataviz, no se distingue lo suficiente (falla el
-  // piso de croma y, en el gráfico de torta, el chequeo "todos contra todos")
-  // frente al azul/verde de PALETA_TORTA_COSTOS una vez que conviven en el
-  // mismo gráfico categórico. Este verde-turquesa más saturado sí pasa el
-  // chequeo completo junto a los 4 tonos de PALETA_TORTA_COSTOS y sigue
-  // leyéndose como la misma familia de color de marca. --ivc-turquesa no se
-  // toca en ningún otro lado del tablero.
-  var COLOR_SUELDOS_COSTOS = '#007658';
+  // Color de "Sueldos" en la torta y la barra de Costos: ahora es olive, la
+  // 3ª posición de PALETA_TORTA, en vez de un verde-turquesa propio. Sigue
+  // leyéndose como la familia de color histórica de Sueldos (verde) y ya no
+  // requiere una paleta de Compras aparte para convivir con él: los 3 tonos
+  // (navy, teal, olive) juntos pasan el chequeo "todos contra todos" completo
+  // (ΔE normal-vision 15.9, sin fallas de croma/contraste). --ivc-turquesa
+  // (#008175, la variable de marca) no se usa acá ni en ningún otro lado del
+  // tablero para series de datos — sigue siendo solo para UI.
+  var COLOR_SUELDOS_COSTOS = '#30752a';
 
   // Color del segmento "Imputación estimada por dato faltante" en el gráfico
   // Costo Total por Mes: se dibuja sin relleno sólido (fill:none), solo con
@@ -1829,9 +1924,16 @@
     });
     stateCostos.mesResumen = mesResumenDefault;
     selMesCostos.value = mesResumenDefault;
-    selMesCostos.addEventListener('change', function () { stateCostos.mesResumen = selMesCostos.value === 'todos' ? 'todos' : Number(selMesCostos.value); renderKpisCostos(); renderComposicionCosto(); });
+    actualizarPeriodoSeleccionadoCostos();
+    selMesCostos.addEventListener('change', function () {
+      stateCostos.mesResumen = selMesCostos.value === 'todos' ? 'todos' : Number(selMesCostos.value);
+      actualizarPeriodoSeleccionadoCostos();
+      renderKpisCostos(); renderComposicionCosto();
+    });
     document.getElementById('btnLimpiarFiltrosCostos').addEventListener('click', function () {
-      stateCostos.mesResumen = 'todos'; selMesCostos.value = 'todos'; renderKpisCostos(); renderComposicionCosto();
+      stateCostos.mesResumen = 'todos'; selMesCostos.value = 'todos';
+      actualizarPeriodoSeleccionadoCostos();
+      renderKpisCostos(); renderComposicionCosto();
     });
     renderKpisCostos();
     renderComposicionCosto();
@@ -1860,7 +1962,7 @@
   fetchRecurso('bundle', 'ventas', null, {
     onReintentar: function (msg) {
       var el = document.getElementById('ventasConexionMsg');
-      if (el) el.textContent = msg;
+      if (el) { el.textContent = msg; el.style.display = ''; el.style.color = ''; }
     }
   }).then(function (data) {
     RAW.remitosVentas = normalizarRemitosVentas(data.remitos);
@@ -2019,30 +2121,57 @@
     }).filter(function (f) { return f.nFactura; });
   }
 
+  // Antes este mensaje mostraba siempre una nota fija ("los indicadores
+  // todavía no están armados... Conectado — datos al día") — ya no hace
+  // falta esa aclaración (la sección ya tiene KPI y gráficos reales), así que
+  // el elemento queda oculto en el caso normal y solo se muestra para avisar
+  // un corte de conexión real (o un reintento en curso).
   function renderVentasConexion(ok, errMsg) {
     var wrap = document.getElementById('kpiRowVentasConexion');
     var msgEl = document.getElementById('ventasConexionMsg');
     if (!ok) {
-      if (msgEl) { msgEl.textContent = 'No se pudo conectar con la fuente de Ventas: ' + errMsg; msgEl.style.color = 'var(--status-critical)'; }
+      if (msgEl) { msgEl.textContent = 'No se pudo conectar con la fuente de Ventas: ' + errMsg; msgEl.style.color = 'var(--status-critical)'; msgEl.style.display = ''; }
       if (wrap) wrap.innerHTML = '';
       return;
     }
-    if (msgEl) { msgEl.textContent = 'Conectado — datos al día.'; msgEl.style.color = ''; }
+    if (msgEl) { msgEl.style.display = 'none'; msgEl.textContent = ''; msgEl.style.color = ''; }
+  }
 
-    var remitos = RAW.remitosVentas || [];
-    var facturas = RAW.facturasVentas || [];
+  // KPI de "Resumen General" de Ventas — a diferencia de antes (mostraban
+  // siempre el total global de todo lo cargado), ahora responden al filtro de
+  // Año/Meses de arriba, igual que el resto de las hojas. "Último Remito
+  // Cargado" y "Última Factura Cargada" quedan afuera del filtro a propósito:
+  // son un chequeo de que la conexión está al día, no un KPI del período
+  // elegido, así que siempre muestran la fecha más reciente de TODO lo
+  // cargado.
+  function renderKpisResumenVentas() {
+    var wrap = document.getElementById('kpiRowVentasConexion');
+    if (!wrap) return;
+    var remitosTodos = RAW.remitosVentas || [];
+    var facturasTodas = RAW.facturasVentas || [];
+    var anio = stateVentas.anio;
+    var mesesSel = stateVentas.meses; // null = todos
+
+    function enPeriodo(anioItem, mesItem) {
+      if (anioItem !== anio) return false;
+      if (mesesSel && mesesSel.indexOf(mesItem) === -1) return false;
+      return true;
+    }
+    var remitos = remitosTodos.filter(function (r) { return enPeriodo(r.anio, r.mesIdx); });
+    var facturas = facturasTodas.filter(function (f) { return enPeriodo(f.anio, f.mesIdx); });
     var remitosVinculados = remitos.filter(function (r) { return r.nFactura; }).length;
-    var fechasRemitos = remitos.map(function (r) { return r.fecha; }).filter(Boolean);
+
+    var fechasRemitos = remitosTodos.map(function (r) { return r.fecha; }).filter(Boolean);
     var ultimoRemito = fechasRemitos.length ? new Date(Math.max.apply(null, fechasRemitos)) : null;
-    var fechasFacturas = facturas.map(function (f) { return f.fechaFactura; }).filter(Boolean);
+    var fechasFacturas = facturasTodas.map(function (f) { return f.fechaFactura; }).filter(Boolean);
     var ultimaFactura = fechasFacturas.length ? new Date(Math.max.apply(null, fechasFacturas)) : null;
 
     var tiles = [
-      { label: 'Remitos Cargados', value: formatNum(remitos.length), sub: 'Filas válidas de Registro de Remitos (sin anuladas ni vacías)' },
-      { label: 'Facturas Cargadas', value: formatNum(facturas.length), sub: 'Filas de Registro de Facturas Ventas con N° Factura' },
+      { label: 'Remitos Cargados', value: formatNum(remitos.length), sub: 'Total de remitos registrados en el período seleccionado' },
+      { label: 'Facturas Cargadas', value: formatNum(facturas.length), sub: 'Total de facturas de venta registradas en el período seleccionado' },
       {
         label: 'Remitos Vinculados a Factura', value: formatNum(remitosVinculados),
-        sub: remitos.length ? (remitosVinculados + ' de ' + remitos.length + ' remitos ya tienen N° Factura cargado') : '—'
+        sub: remitos.length ? (remitosVinculados + ' de ' + remitos.length + ' remitos ya cuentan con una factura asociada') : '—'
       },
       { label: 'Último Remito Cargado', value: ultimoRemito ? ultimoRemito.toLocaleDateString('es-AR') : '—', sub: 'Fecha del remito más reciente' },
       { label: 'Última Factura Cargada', value: ultimaFactura ? ultimaFactura.toLocaleDateString('es-AR') : '—', sub: 'Fecha de factura más reciente' }
@@ -2155,16 +2284,19 @@
       stateVentas.anio = Number(selAnio.value);
       stateVentas.meses = null; // al cambiar de año, reiniciar a "todos los meses"
       pintarChipsMesesVentas();
+      actualizarPeriodoSeleccionadoVentas();
       renderVentasFiltrado();
     });
 
     pintarChipsMesesVentas();
+    actualizarPeriodoSeleccionadoVentas();
 
     var btnTodos = document.getElementById('btnMesesVentasTodos');
     if (btnTodos) {
       btnTodos.addEventListener('click', function () {
         stateVentas.meses = null;
         pintarChipsMesesVentas();
+        actualizarPeriodoSeleccionadoVentas();
         renderVentasFiltrado();
       });
     }
@@ -2188,6 +2320,7 @@
         selAnio.value = anioOperativoVentas;
         stateVentas.meses = null;
         pintarChipsMesesVentas();
+        actualizarPeriodoSeleccionadoVentas();
         renderVentasFiltrado();
       });
     }
@@ -2196,6 +2329,7 @@
   // Vuelve a dibujar todo lo que depende del filtro de Año/Meses de Ventas
   // (los dos gráficos de la sección "Análisis de Productos Vendidos").
   function renderVentasFiltrado() {
+    renderKpisResumenVentas();
     renderAnalisisProductosVentas();
     renderEvolucionVentas();
   }
@@ -2230,6 +2364,7 @@
         // Si quedaron los 12 meses marcados, volvemos a representarlo como "todos".
         stateVentas.meses = actuales.length === 12 ? null : actuales;
         pintarChipsMesesVentas();
+        actualizarPeriodoSeleccionadoVentas();
         renderVentasFiltrado();
       });
       wrap.appendChild(btn);
@@ -2277,10 +2412,15 @@
     var mesesSeleccionados = stateVentas.meses; // null = todos
     var familia = FAMILIAS_EVOLUCION_VENTAS[stateVentas.familiaEvolucion] || FAMILIAS_EVOLUCION_VENTAS.postes;
 
-    var meses = mesesSeleccionados ? mesesSeleccionados.slice() : MESES_CORTO.map(function (_, i) { return i; });
+    // Igual que en el resto de las hojas: el filtro de Meses no recorta este
+    // gráfico de tendencia (con una sola columna se pierde el sentido de
+    // evolución) — siempre muestra los 12 meses del año y en cambio resalta
+    // los meses elegidos, atenuando el resto (ver emphasisIndex en
+    // renderBarChart, que acá recibe un array porque Ventas permite elegir
+    // varios meses a la vez, a diferencia del Mes único de las otras hojas).
+    var meses = MESES_CORTO.map(function (_, i) { return i; });
     var delFamilia = (RAW.remitosVentas || []).filter(function (r) {
       if (r.anio !== anio) return false;
-      if (meses.indexOf(r.mesIdx) === -1) return false;
       return familia.filtro(categorizarProductoVentas(r.descripcion));
     });
 
@@ -2305,7 +2445,10 @@
       }];
     }
 
-    renderBarChart(contenedor, cats, series, { stacked: true, valueFormatter: formatNum, tooltipFormatter: formatNum });
+    renderBarChart(contenedor, cats, series, {
+      stacked: true, valueFormatter: formatNum, tooltipFormatter: formatNum,
+      emphasisIndex: mesesSeleccionados
+    });
 
     var cols = ['Mes'].concat(series.map(function (s) { return s.name; })).concat(series.length > 1 ? ['Total'] : []);
     var trows = meses.map(function (m, i) {
@@ -2485,6 +2628,36 @@
       el.textContent = 'Período seleccionado: Todos los meses de ' + anioOperativoCompras;
     } else {
       el.textContent = 'Período seleccionado: ' + MESES_DISPLAY[stateCompras.mes] + ' ' + anioOperativoCompras;
+    }
+  }
+
+  // Mismo criterio, para la barra de filtros de Costos (usa anioOperativo,
+  // el mismo año operativo que Sueldos — ver "Módulo Costos" en el wiring).
+  function actualizarPeriodoSeleccionadoCostos() {
+    var el = document.getElementById('periodoSeleccionadoLabelCostos');
+    if (!el) return;
+    if (stateCostos.mesResumen === 'todos') {
+      el.textContent = 'Período seleccionado: Todos los meses de ' + anioOperativo;
+    } else {
+      el.textContent = 'Período seleccionado: ' + MESES_DISPLAY[stateCostos.mesResumen] + ' ' + anioOperativo;
+    }
+  }
+
+  // Mismo criterio, para la barra de filtros de Ventas — a diferencia de las
+  // otras hojas (un solo Mes), acá el filtro es Año + Meses de selección
+  // múltiple, así que el texto cubre los 3 casos: todos los meses, uno solo,
+  // o varios.
+  function actualizarPeriodoSeleccionadoVentas() {
+    var el = document.getElementById('periodoSeleccionadoLabelVentas');
+    if (!el) return;
+    var anio = stateVentas.anio;
+    var meses = stateVentas.meses;
+    if (!meses) {
+      el.textContent = 'Período seleccionado: Todos los meses de ' + anio;
+    } else if (meses.length === 1) {
+      el.textContent = 'Período seleccionado: ' + MESES_DISPLAY[meses[0]] + ' ' + anio;
+    } else {
+      el.textContent = 'Período seleccionado: ' + meses.length + ' meses de ' + anio;
     }
   }
 
@@ -3388,6 +3561,8 @@
     // un mes con menos días hábiles u horas no distorsiona el resultado.
     var mesLbl = document.getElementById('mesPromedioCostosLabel');
     if (mesLbl) mesLbl.textContent = mesRefNombre;
+    var mesLblCaption = document.getElementById('mesPromedioCostosLabelCaption');
+    if (mesLblCaption) mesLblCaption.textContent = mesRefNombre.toLowerCase();
 
     var sumCosto = 0, sumDias = 0, sumHoras = 0, nMeses = mesRef + 1;
     for (var m = 0; m <= mesRef; m++) {
@@ -3460,15 +3635,16 @@
   // del mes elegido en el filtro "Mes" de arriba (stateCostos.mesResumen) —
   // el mismo mes que usan los KPI de "Costo Total del Mes". Es un gráfico de
   // torta ("todos contra todos": dos porciones cualquiera pueden terminar
-  // lado a lado), así que usa PALETA_TORTA_COSTOS (4 tonos, verificados para
-  // ese chequeo estricto JUNTO A COLOR_SUELDOS_COSTOS — la paleta de Sueldos
-  // no lo logra, ver comentario junto a esa constante) y NO la paleta
-  // extendida de 8 tonos que usan las barras apiladas — con 5+ colores en una
-  // torta, el validador de la guía de dataviz encuentra pares que no se
-  // distinguen. Por eso acá el tope de macrocategorías "propias" es 4 (no 8):
-  // de la 5ta en adelante se agrupan en "Otros", igual que en los otros 4
-  // gráficos de torta de Compras (esos sí muestran el año completo — acá se
-  // decidió seguir el mes en vez del año porque es lo que pidió Rocío).
+  // lado a lado), así que usa PALETA_TORTA_COSTOS (navy+teal, la misma terna
+  // de PALETA_TORTA sin su 3er tono, que acá lo usa COLOR_SUELDOS_COSTOS) y
+  // NO la paleta extendida de 8 tonos que usan las barras apiladas — con 4+
+  // colores en una torta, el validador de la guía de dataviz encuentra pares
+  // que no se distinguen. Por eso acá el tope de macrocategorías "propias" de
+  // Compras es 2 (no 4 como antes, ni 8): de la 3ra en adelante se agrupan en
+  // "Otros" — un tope más chico que en los otros 4 gráficos de torta de
+  // Compras (esos sí muestran el año completo y usan la paleta de 8 tonos —
+  // acá se prioriza que Sueldos y Compras convivan bajo el chequeo estricto
+  // de daltonismo, ver comentario junto a COLOR_SUELDOS_COSTOS).
   function construirComposicionCosto(anio, mesIdx) {
     var totalSueldos = costoSueldosMes(anio, mesIdx);
 
