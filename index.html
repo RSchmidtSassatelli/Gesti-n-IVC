@@ -47,18 +47,22 @@
     --status-good: #0ca30c;
     --status-critical: #d03b3b;
 
-    /* Paleta nueva (2026-09), sólo para los gráficos de la pestaña Sueldos —
-       las --ivc-series-N, --ivc-turquesa e --ivc-azul-oscuro de arriba siguen
-       tal cual para el resto de la UI (pestañas, botones, textos) y para los
-       demás módulos (Compras/Costos/Ventas/Productividad), que no cambian. */
-    --sld-navy: #0A3540;
-    --sld-teal: #1B6E7A;
-    --sld-blue: #3B8EA5;
-    --sld-blue-light: #8FBCC3;
-    --sld-slate: #5F7481;
-    --sld-sage: #7A9E7E;
-    --sld-olive: #4C7A47;
-    --sld-pine: #2E634B;
+    /* Paleta categórica de gráficos (2026-09), unificada para TODOS los
+       módulos sin excepciones — ver diseno/identidad-visual-ivc.md. Los
+       gráficos de Sueldos usan estas mismas 8 variables --sld-* (los nombres
+       quedan por compatibilidad con el código existente) con los HEX exactos
+       de esa paleta; antes tenían una versión de croma más baja (heredada de
+       antes de pasar el validador de daltonismo/contraste) que ya no está
+       vigente. --ivc-series-N, --ivc-turquesa e --ivc-azul-oscuro de arriba
+       son la paleta de MARCA/UI (pestañas, botones, textos) y no cambian. */
+    --sld-navy: #007295;
+    --sld-teal: #1cb9cd;
+    --sld-blue: #007399;
+    --sld-blue-light: #37b7c8;
+    --sld-slate: #006ca2;
+    --sld-sage: #73b87d;
+    --sld-olive: #30752a;
+    --sld-pine: #5cba90;
   }
 
   * { box-sizing: border-box; }
@@ -348,6 +352,15 @@
   svg .axis-line { stroke: var(--baseline); stroke-width: 1; }
   svg .grid-line { stroke: var(--gridline); stroke-width: 1; }
   svg .end-label { fill: var(--text-primary); font-size: 11px; font-weight: 600; }
+  /* Etiqueta de valor sobre/bajo cada barra individual (opts.barLabels, ver
+     renderBarChart) — más chica que .end-label porque va una por barra (hasta
+     3 por mes en Margen Bruto) en vez de una sola por grupo/total. */
+  svg .bar-value-label { fill: var(--text-secondary); font-size: 9.5px; font-weight: 600; }
+  /* Título de eje (opts.xAxisLabel/opts.yAxisLabel, ver renderBarChart) — más
+     chico y apagado que el resto del texto del gráfico, para que identifique
+     el eje sin competir con los datos (mismo criterio "recesivo" que las
+     grillas/ejes). */
+  svg .axis-title { fill: var(--text-secondary); font-size: 10.5px; font-weight: 500; letter-spacing: 0.2px; }
 
   .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 6px; }
   .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--text-secondary); cursor: default; }
@@ -474,7 +487,7 @@
   <button type="button" class="module-tab" data-modulo="compras">Compras</button>
   <button type="button" class="module-tab" data-modulo="costos">Costos</button>
   <button type="button" class="module-tab" data-modulo="ventas">Ventas</button>
-  <button type="button" class="module-tab" data-modulo="productividad">Productividad</button>
+  <button type="button" class="module-tab" data-modulo="productividad">Margen Bruto</button>
 </nav>
 
 <div id="moduloSueldos" class="modulo-panel">
@@ -858,11 +871,53 @@
 
 </div>
 
-<div id="moduloProductividad" class="modulo-panel modulo-placeholder hidden">
-  <div class="construction-box">
-    <h2>Productividad</h2>
-    <p>Sección en Construcción.</p>
+<div id="moduloProductividad" class="modulo-panel hidden">
+
+<div class="filters">
+  <span class="filters-title">Filtros</span>
+  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+    <span style="font-size:12px; color:var(--text-secondary);">Meses</span>
+    <button type="button" class="btn-ghost" id="btnMesesMargenTodos">Todos</button>
+    <div id="filtroMesesMargen" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
   </div>
+  <button type="button" class="btn-ghost" id="btnLimpiarFiltrosMargen">Limpiar filtros</button>
+  <span class="periodo-label" id="periodoSeleccionadoLabelMargen">Período seleccionado: —</span>
+</div>
+
+<main>
+
+  <section class="block">
+    <h2>Margen Bruto Mensual</h2>
+    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Compara, mes a mes, los Ingresos, los Costos (Sueldos + Compras) y el Margen Bruto (Ingresos − Costos).</p>
+    <div class="cards">
+      <div class="card full">
+        <div class="card-head">
+          <h3>Ingresos Estimados según Cobros Proyectados</h3>
+          <button class="btn-ghost" data-toggle-table="chartMargenFacturacion">Ver tabla</button>
+        </div>
+        <p class="caption">Ingresos estimados: suma de "Ingresos Proyectados", agrupada por mes según la Fecha Estimada de Cobro de cada registro. Costos: Sueldos + Compras del mes. Margen estimado: Ingresos estimados − Costos.</p>
+        <div class="chart-holder" id="chartMargenFacturacion"></div>
+        <div class="table-wrap" id="chartMargenFacturacion-table"></div>
+      </div>
+
+      <div class="card full">
+        <div class="card-head">
+          <h3>Ingresos Estimados según Remitos</h3>
+          <button class="btn-ghost" data-toggle-table="chartMargenRemitos">Ver tabla</button>
+        </div>
+        <p class="caption">Ingresos estimados: según registro de remitos y precios estimados. Costos: Sueldos + Compras del mes. Margen estimado: Ingresos estimados − Costos.</p>
+        <div class="chart-holder" id="chartMargenRemitos"></div>
+        <div class="table-wrap" id="chartMargenRemitos-table"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="app-footer">
+  Combina datos de Sueldos, Compras y Ventas (Registro de Remitos e Ingresos Estimados) — se actualizan solos, sin tocar este archivo. Última carga: <span id="footerTimestampProductividad">—</span>.
+</footer>
+
 </div>
 
 <div id="tooltip"></div>
@@ -902,7 +957,7 @@
       var headerH = header.getBoundingClientRect().height;
       var tabsH = tabsBar.getBoundingClientRect().height;
       tabsBar.style.top = headerH + 'px';
-      document.querySelectorAll('#moduloSueldos > .filters, #moduloCompras > .filters, #moduloCostos > .filters, #moduloVentas > .filters').forEach(function (f) {
+      document.querySelectorAll('#moduloSueldos > .filters, #moduloCompras > .filters, #moduloCostos > .filters, #moduloVentas > .filters, #moduloProductividad > .filters').forEach(function (f) {
         f.style.top = (headerH + tabsH) + 'px';
       });
     }
@@ -918,6 +973,19 @@
   var MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
   var MESES_DISPLAY = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   var MESES_CORTO = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+  // Filtro de Meses de Margen Bruto — mismo patrón de chips multi-selección
+  // que el de Ventas (ver stateVentas/pintarChipsMesesVentas), pero sin
+  // selector de Año propio: Margen Bruto ya usa el único anioOperativo del
+  // tablero (ver comentario en su cálculo), así que acá solo hace falta
+  // elegir meses dentro de ese año. meses: null = todos los meses.
+  var stateMargenBruto = { meses: null };
+
+  // Los chips no dependen de que hayan llegado datos (son los 12 meses fijos
+  // de MESES_CORTO, recién definido arriba), así que se pintan ya mismo,
+  // antes de que resuelva ningún pedido — renderMargenBruto() los vuelve a
+  // usar (como emphasisIndex) cada vez que cambia la selección o llegan datos.
+  inicializarFiltroMesesMargen();
 
   var CATEGORIAS_ORDEN = ['Ayudante', 'Medio Oficial', 'Oficial', 'Oficial Especializado', 'Otro'];
   // Colores pedidos puntualmente para Personal Activo por Categoría, sobre la
@@ -967,7 +1035,8 @@
   }
   function num(v) { var n = Number(v); return isFinite(n) ? n : 0; }
   function formatMoney(n) {
-    return '$' + Math.round(n).toLocaleString('es-AR');
+    var sign = n < 0 ? '-' : '';
+    return sign + '$' + Math.round(Math.abs(n)).toLocaleString('es-AR');
   }
   // Formato compacto para montos en pesos (ejes, totales sobre barras, leyendas).
   // Todo valor monetario del tablero lleva el signo $ delante del importe —
@@ -997,6 +1066,35 @@
     var ticks = [];
     var top = Math.ceil(maxVal / step) * step;
     for (var t = 0; t <= top + step * 1e-6; t += step) ticks.push(Math.round(t * 1000) / 1000);
+    return ticks;
+  }
+
+  // Igual que niceTicks(), pero para series que pueden bajar de cero (Margen
+  // = Ingresos − Costos, en el gráfico de Margen Bruto): el paso se calcula
+  // sobre el mayor de los dos extremos (arriba o abajo de cero) y después se
+  // repite hacia ambos lados desde 0, así el eje queda simétrico y 0 siempre
+  // cae justo en una línea de grilla (la que se dibuja como "axis-line").
+  function niceTicksSigned(minVal, maxVal, count) {
+    count = count || 5;
+    var top = Math.max(maxVal, 0);
+    var bottom = Math.min(minVal, 0);
+    if (top <= 0 && bottom >= 0) return [0, 1];
+    var refTicks = niceTicks(Math.max(top, -bottom), count);
+    var step = refTicks.length > 1 ? refTicks[1] - refTicks[0] : (refTicks[0] || 1);
+    // BUGFIX (2026-09-25): antes el loop cortaba en `top`/`bottom` (el valor
+    // real de los datos), no en el extremo "redondeado hacia afuera" que
+    // niceTicks() sí usa para el caso normal (ceil(maxVal/step)*step) — eso
+    // dejaba la ÚLTIMA marca de grilla por debajo del dato real en vez de
+    // arriba, así que la barra más alta (o más negativa) no tenía margen y
+    // quedaba pegada/cortada contra el borde del gráfico. Redondeando cada
+    // extremo hacia afuera acá también, igual que hace niceTicks(), se
+    // garantiza el mismo margen arriba Y abajo de cero.
+    var topRedondeado = Math.ceil(top / step) * step;
+    var bottomRedondeado = Math.floor(bottom / step) * step;
+    var ticks = [0];
+    var t;
+    for (t = step; t <= topRedondeado + step * 1e-6; t += step) ticks.push(Math.round(t * 1000) / 1000);
+    for (t = -step; t >= bottomRedondeado - step * 1e-6; t -= step) ticks.unshift(Math.round(t * 1000) / 1000);
     return ticks;
   }
 
@@ -1165,24 +1263,55 @@
     if (!categories.length || !series.length) return emptyState(container);
 
     var stacked = !!opts.stacked;
-    var width = 780, height = opts.height || 300;
+    var width = opts.width || 780, height = opts.height || 300;
     var legendH = (series.length > 1) ? 26 : 0;
     var totalLabelH = (stacked && opts.stackTotals) ? 20 : 0;
-    var margin = { top: 14 + legendH + totalLabelH, right: 14, bottom: 34, left: opts.leftMargin || 60 };
+    // opts.barLabels (solo aplica al caso agrupado/no-apilado, ver más abajo):
+    // reserva el mismo margen extra que ya reserva stackTotals, arriba Y abajo,
+    // para que la etiqueta de la barra más alta (o, con valores negativos, de
+    // la más negativa) tenga lugar sin quedar pegada al borde del gráfico.
+    var barLabelH = (opts.barLabels && !stacked) ? 20 : 0;
+    // opts.xAxisLabel/opts.yAxisLabel: título de eje opcional (ver más abajo,
+    // donde se dibujan) — reservan su propio espacio aparte para no pisar ni
+    // las etiquetas de categoría/mes ni los números del eje Y.
+    var xAxisLabelH = opts.xAxisLabel ? 20 : 0;
+    var yAxisLabelW = opts.yAxisLabel ? 18 : 0;
+    var margin = { top: 14 + legendH + totalLabelH + barLabelH, right: 14, bottom: 34 + barLabelH + xAxisLabelH, left: (opts.leftMargin || 60) + yAxisLabelW };
     var plotW = width - margin.left - margin.right;
     var plotH = height - margin.top - margin.bottom;
 
-    var maxVal;
+    // Las barras apiladas (stacked) de este tablero siempre son montos que se
+    // suman (nunca bajan de 0), así que ese caso sigue asumiendo piso en 0.
+    // Las agrupadas (stacked:false) sí pueden incluir una serie negativa —
+    // Margen (Ingresos − Costos) en el gráfico de Margen Bruto — así que ahí
+    // se calcula también el mínimo y se usa niceTicksSigned() para un eje que
+    // baja de cero con 0 cayendo justo en una línea de grilla.
+    var maxVal, minVal;
     if (stacked) {
       maxVal = Math.max.apply(null, categories.map(function (_, i) {
         return series.reduce(function (s, ser) { return s + num(ser.values[i]); }, 0);
       }).concat([0]));
+      minVal = 0;
     } else {
-      maxVal = Math.max.apply(null, series.reduce(function (acc, ser) { return acc.concat(ser.values.map(num)); }, []).concat([0]));
+      var allVals = series.reduce(function (acc, ser) { return acc.concat(ser.values.map(num)); }, []);
+      maxVal = Math.max.apply(null, allVals.concat([0]));
+      minVal = Math.min.apply(null, allVals.concat([0]));
     }
-    var ticks = niceTicks(maxVal || 1, 5);
+    var hasNegative = minVal < 0;
+    var ticks = hasNegative ? niceTicksSigned(minVal, maxVal, 5) : niceTicks(maxVal || 1, 5);
     var yMax = ticks[ticks.length - 1] || 1;
-    function yScale(v) { return plotH - (v / yMax) * plotH; }
+    var yMin = ticks[0];
+    var yRange = (yMax - yMin) || 1;
+    // padY: con opts.barLabels + valores negativos (Margen Bruto), una barra
+    // que llega justo al último tick de abajo deja su etiqueta de valor
+    // (dibujada debajo de la punta, ver más abajo) pegada contra la etiqueta
+    // de mes del eje X — se vieron encimadas en la práctica (ej. "Mar-$7M").
+    // Insetear el rango de datos unos px por arriba y por abajo del área de
+    // ploteo (en vez de usar el 100% de plotH) le da a esa etiqueta un
+    // colchón garantizado, sin depender de que niceTicksSigned redondee para
+    // arriba (no lo hace cuando el dato ya es un múltiplo exacto del paso).
+    var padY = (opts.barLabels && hasNegative) ? 16 : 0;
+    function yScale(v) { return padY + (plotH - 2 * padY) - ((v - yMin) / yRange) * (plotH - 2 * padY); }
     var fmt = opts.valueFormatter || formatCompact;
 
     var svg = el('svg', { viewBox: '0 0 ' + width + ' ' + height });
@@ -1262,33 +1391,131 @@
       var n = series.length;
       var groupW = Math.min(barMax * n + 2 * (n - 1), band * 0.78);
       var bw = Math.min(barMax, (groupW - 2 * (n - 1)) / n);
+      var yZero = yScale(0);
+      // Con valores negativos (Margen, en el gráfico de Margen Bruto) la barra
+      // "cuelga" hacia abajo desde la línea de cero en vez de crecer desde el
+      // piso del gráfico — el extremo redondeado (el dato, vBarPath) tiene que
+      // quedar del lado del VALOR, no siempre arriba: por eso, si v es
+      // negativo, se arma con las coordenadas espejadas verticalmente
+      // respecto de la línea de cero (mismo path que un vBarPath normal, dado
+      // vuelta), para que el redondeo quede pegado a la punta de la barra.
+      function vBarPathDesdeCero(x, v, width, r) {
+        var yv = yScale(v);
+        if (yv <= yZero) return vBarPath(x, yv, width, yZero - yv, r);
+        var height = yv - yZero;
+        if (height <= 0) return '';
+        r = Math.min(r, width / 2, height);
+        var yTop = yZero, yBottom = yv;
+        return 'M' + x + ',' + yTop +
+          ' L' + x + ',' + (yBottom - r) +
+          ' Q' + x + ',' + yBottom + ' ' + (x + r) + ',' + yBottom +
+          ' L' + (x + width - r) + ',' + yBottom +
+          ' Q' + (x + width) + ',' + yBottom + ' ' + (x + width) + ',' + (yBottom - r) +
+          ' L' + (x + width) + ',' + yTop + ' Z';
+      }
+      // opts.barLabels: las etiquetas de valor por barra se juntan acá en vez
+      // de agregarse al `plot` en el momento (ver más abajo, después del
+      // forEach) — con barras angostas de a 3 por grupo (Ingresos/Costos/
+      // Margen), la etiqueta de una barra petisa puede ser más ancha que esa
+      // barra y pisar la de al lado (ej. Costos, dibujada después); dibujando
+      // TODAS las etiquetas al final quedan por encima de las 3×N barras del
+      // gráfico entero, nunca tapadas por la barra vecina.
+      var barLabelInfos = [];
       categories.forEach(function (cat, i) {
         var groupX = i * band + band / 2 - groupW / 2;
         series.forEach(function (ser, si) {
           var v = num(ser.values[i]);
           var x = groupX + si * (bw + 2);
-          var y = yScale(v);
-          var h = plotH - y;
-          var path = vBarPath(x, y, bw, h, barR);
-          var rect = el('path', { d: path, fill: ser.color, opacity: catOpacity(i) });
+          // ser.colorFor(v): color "de estado" por barra en vez de fijo por
+          // serie — lo usa Margen en Margen Bruto (verde si da positivo, rojo
+          // si da negativo), a diferencia de Ingresos/Costos que sí tienen
+          // un color categórico fijo (ver renderMargenBruto).
+          var color = ser.colorFor ? ser.colorFor(v, i) : ser.color;
+          var path = hasNegative ? vBarPathDesdeCero(x, v, bw, barR) : vBarPath(x, yScale(v), bw, plotH - yScale(v), barR);
+          var rect = el('path', { d: path, fill: color, opacity: catOpacity(i) });
           rect.addEventListener('pointermove', function (evt) {
-            renderTooltip(cat, [{ label: ser.name, value: fmt2(v, opts), color: ser.color }]);
+            renderTooltip(cat, [{ label: ser.name, value: fmt2(v, opts), color: color }]);
             showTooltip(evt);
           });
           rect.addEventListener('pointerleave', hideTooltip);
           plot.appendChild(rect);
+          // opts.barLabels: etiqueta de valor propia por barra (no solo por
+          // grupo/total, como en el stackTotals de arriba) — arriba de la
+          // punta si v >= 0, debajo si v < 0 (misma barra "colgando" que
+          // vBarPathDesdeCero). Usa el mismo formateador compacto que el eje
+          // (fmt) para que quepa junto a barras angostas de a 3 por mes.
+          if (opts.barLabels && v !== 0) {
+            var yPunta = yScale(v);
+            barLabelInfos.push({
+              x: x + bw / 2,
+              y: v < 0 ? yPunta + 12 : yPunta - 6,
+              text: fmt(v),
+              opacity: catOpacity(i)
+            });
+          }
         });
         var xl = el('text', { x: i * band + band / 2, y: plotH + 18, 'text-anchor': 'middle' });
         if (indiceEnfatizado(i) && opts.emphasisIndex != null) { xl.setAttribute('font-weight', '700'); xl.setAttribute('fill', 'var(--text-primary)'); }
         xl.textContent = cat;
         plot.appendChild(xl);
       });
+
+      // Se dibujan recién acá, después de las 3×N barras de arriba: cada
+      // etiqueta lleva un fondo tipo "chip" (gris translúcido + borde, mismo
+      // criterio que el badge de stackTotals más abajo) para que se lea aunque
+      // quede sobre la barra vecina, no solo por el orden de dibujado.
+      if (barLabelInfos.length) {
+        var blFont = '600 9.5px system-ui, -apple-system, "Segoe UI", sans-serif';
+        var blPadX = 4, blPadY = 2, blAscent = 7, blDescent = 2;
+        barLabelInfos.forEach(function (info) {
+          var w = measureTextWidth(info.text, blFont);
+          var badge = el('rect', {
+            x: info.x - w / 2 - blPadX, y: info.y - blAscent - blPadY,
+            width: w + blPadX * 2, height: blAscent + blDescent + blPadY * 2,
+            rx: 3, ry: 3,
+            fill: cssVar('--surface-2') || '#f6f8f8', 'fill-opacity': 0.82,
+            stroke: cssVar('--border') || 'rgba(11,11,11,0.14)', 'stroke-width': 1,
+            opacity: info.opacity
+          });
+          plot.appendChild(badge);
+          var vl = el('text', { x: info.x, y: info.y, 'text-anchor': 'middle', class: 'bar-value-label' });
+          vl.textContent = info.text;
+          vl.setAttribute('opacity', info.opacity);
+          plot.appendChild(vl);
+        });
+      }
+    }
+
+    // Títulos de eje (opts.xAxisLabel/opts.yAxisLabel) — se dibujan en las
+    // coordenadas del svg completo (no las de `plot`, que ya están corridas
+    // por el margen) porque van AFUERA del área de ploteo, en el margen
+    // reservado arriba (xAxisLabelH/yAxisLabelW).
+    if (opts.xAxisLabel) {
+      var xTitle = el('text', {
+        x: margin.left + plotW / 2, y: height - 6,
+        'text-anchor': 'middle', class: 'axis-title'
+      });
+      xTitle.textContent = opts.xAxisLabel;
+      svg.appendChild(xTitle);
+    }
+    if (opts.yAxisLabel) {
+      var yTitle = el('text', {
+        x: 12, y: margin.top + plotH / 2,
+        'text-anchor': 'middle', class: 'axis-title',
+        transform: 'rotate(-90 12 ' + (margin.top + plotH / 2) + ')'
+      });
+      yTitle.textContent = opts.yAxisLabel;
+      svg.appendChild(yTitle);
     }
 
     svg.appendChild(plot);
     container.appendChild(svg);
     if (series.length > 1 && !opts.hideLegend) {
-      legendRow(container, series.map(function (s) { return { color: s.color, label: s.name, hollow: !!s.hollow }; }));
+      // opts.legendItems: reemplaza la leyenda derivada 1-a-1 de `series` —
+      // hace falta cuando una serie no tiene un solo color fijo (ej. Margen
+      // en Margen Bruto, que usa colorFor) y por eso necesita 2 entradas de
+      // leyenda ("Margen positivo"/"Margen negativo") en vez de 1.
+      legendRow(container, opts.legendItems || series.map(function (s) { return { color: s.color, label: s.name, hollow: !!s.hollow }; }));
       container.insertBefore(container.lastChild, svg);
     }
 
@@ -1613,7 +1840,13 @@
   // ============================================================
   // Estado global + datos
   // ============================================================
-  var RAW = {};
+  // Arrays inicializados vacíos (no undefined) desde el arranque: Margen
+  // Bruto combina datos de 2 fuentes que cargan en momentos distintos
+  // (Sueldos+Compras vía Promise.all, Ventas aparte) y se re-renderiza desde
+  // los dos lados — sin este default, leer p.ej. RAW.remitosVentas antes de
+  // que responda el pedido de Ventas tiraría error en vez de mostrar el
+  // gráfico parcial con lo que ya haya.
+  var RAW = { costoMensual: [], facturas: [], remitosVentas: [], facturasVentas: [], ingresosEstimados: [] };
   var anioOperativo = null; // último año con datos de nómina reales (costo_mensual) — no editable por el usuario
   // state.mes es el único filtro de Mes para toda la hoja Sueldos (Resumen
   // General, Costos Totales y Horas y Adicionales) — antes cada sección tenía
@@ -1769,6 +2002,26 @@
   // de anotación). Ámbar para que se lea como "estimado / a confirmar", no
   // como un tercer componente de costo real.
   var COLOR_IMPUTACION_COSTOS = '#b8860b';
+
+  // Colores "de estado" para la barra de Margen en Margen Bruto (verde si da
+  // positivo, rojo si da negativo) — a pedido de Rocío. Son propios, NO el
+  // --status-good/--status-critical que ya usan Altas/Bajas: ese rojo de
+  // alerta (#d03b3b) es bastante saturado/"chillón" para una barra sólida
+  // grande, así que acá se usa una versión más apagada del mismo matiz
+  // (mismo tono ~0°, bastante menos saturación y luminosidad, ver cálculo en
+  // el comentario de más abajo) en vez de tocar el rojo compartido y afectar
+  // sin querer a Altas/Bajas. El verde si se reutiliza tal cual, porque nadie
+  // lo marcó como chillón.
+  var COLOR_MARGEN_POSITIVO = cssVar('--status-good') || '#0ca30c';
+  // HSL(0°, 55%, 48%) en vez del HSL(0°, 61%, 52%) de --status-critical —
+  // mismo matiz rojo, levemente menos saturado, para que siga siendo sobrio
+  // sin "gritar". *Corrección (2026-09-25):* la primera versión de este color
+  // (#913b3b, HSL 0°/42%/40%) le bajaba demasiado la luminosidad y la
+  // saturación — a ese nivel el rojo se leía "bordo"/marrón en vez de rojo.
+  // Se subieron ambos parámetros lo justo para que vuelva a leerse
+  // claramente como rojo, verificado con el validador del skill de dataviz
+  // (pasa el piso de croma y de daltonismo junto con el resto de la paleta).
+  var COLOR_MARGEN_NEGATIVO = '#be3737';
 
   function setStatus(ok, msg) {
     var box = document.getElementById('statusBox');
@@ -1945,7 +2198,10 @@
     document.getElementById('footerTimestamp').textContent = horaCarga;
     document.getElementById('footerTimestampCompras').textContent = horaCarga;
     document.getElementById('footerTimestampCostos').textContent = horaCarga;
+    document.getElementById('footerTimestampProductividad').textContent = horaCarga;
     renderAll();
+    renderMargenBruto();
+    actualizarPeriodoSeleccionadoMargen();
   }).catch(function (err) {
     setStatus(false, 'Error al conectar: ' + err.message);
     console.error(err);
@@ -1967,10 +2223,13 @@
   }).then(function (data) {
     RAW.remitosVentas = normalizarRemitosVentas(data.remitos);
     RAW.facturasVentas = normalizarFacturasVentas(data.facturas);
+    RAW.ingresosEstimados = normalizarIngresosEstimados(data.ingresos_estimados);
     renderVentasConexion(true);
     poblarFiltrosVentas();
     renderVentasFiltrado();
     document.getElementById('footerTimestampVentas').textContent = new Date().toLocaleString('es-AR');
+    document.getElementById('footerTimestampProductividad').textContent = new Date().toLocaleString('es-AR');
+    renderMargenBruto();
   }).catch(function (err) {
     console.error(err);
     renderVentasConexion(false, err.message);
@@ -2021,6 +2280,82 @@
   // Todo el cálculo (KPIs, filtros, el gráfico mensual) se hace acá del lado
   // del tablero a partir del crudo, igual que costo_mensual/precios/horas.
   function trimStr(v) { return (v === null || v === undefined) ? '' : v.toString().trim(); }
+
+  // Normaliza un encabezado para comparar sin que importen mayúsculas,
+  // tildes ni espacios de más (" Precio  Estimado " === "PRECIO ESTIMADO").
+  function normalizarEncabezado(s) {
+    return (s || '').toString()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .trim().toUpperCase().replace(/\s+/g, ' ');
+  }
+
+  // Lee una columna por encabezado probando varias grafías posibles, en vez
+  // de una sola — sheetToObjects() (Code.gs) arma cada fila como {encabezado:
+  // valor} usando el encabezado TAL CUAL está tipeado en el Sheet, así que
+  // cualquier diferencia de mayúsculas/tildes hace que la columna nunca se
+  // encuentre y la lectura devuelva 0/vacío en silencio (ya pasó una vez con
+  // "Erogación (Sin Contribuciones)", ver comentario en Code.gs).
+  // 3 niveles, del más estricto al más permisivo:
+  //   1. Coincidencia exacta contra cada candidato de `nombres`.
+  //   2. Coincidencia normalizada (sin tildes/mayúsculas/espacios de más)
+  //      contra esos mismos candidatos — cubre variantes de tipeo que la
+  //      lista no previó exactamente.
+  //   3. (opcional, `contieneTodas`) cualquier encabezado real de la fila
+  //      que contenga TODAS esas palabras sueltas ya normalizadas — para
+  //      columnas nuevas como "Precio Estimado", donde ni la grafía exacta
+  //      ni la capitalización están 100% acordadas de antemano.
+  function valorPorEncabezado(row, nombres, contieneTodas) {
+    var i;
+    for (i = 0; i < nombres.length; i++) {
+      if (row[nombres[i]] !== undefined) return row[nombres[i]];
+    }
+    var objetivo = nombres.map(normalizarEncabezado);
+    var claves = Object.keys(row);
+    for (i = 0; i < claves.length; i++) {
+      if (objetivo.indexOf(normalizarEncabezado(claves[i])) !== -1) return row[claves[i]];
+    }
+    if (contieneTodas && contieneTodas.length) {
+      for (i = 0; i < claves.length; i++) {
+        var norm = normalizarEncabezado(claves[i]);
+        var matchTotal = contieneTodas.every(function (palabra) { return norm.indexOf(palabra) !== -1; });
+        if (matchTotal) return row[claves[i]];
+      }
+    }
+    return undefined;
+  }
+
+  // Convierte a número tolerando que la celda haya llegado como texto con
+  // formato de moneda/miles en convención argentina (ej. "$ 15.000,50" o
+  // "15.000") en vez de como número nativo — pasa cuando la columna en el
+  // Sheet no está formateada como Número/Moneda. Si ya es un número (el caso
+  // normal cuando la celda SÍ es numérica), se comporta igual que num().
+  function numMonto(v) {
+    if (typeof v === 'number') return isFinite(v) ? v : 0;
+    if (v === null || v === undefined) return 0;
+    var s = v.toString().trim();
+    if (!s) return 0;
+    var limpio = s.replace(/[^\d.,-]/g, '');
+    if (!limpio) return 0;
+    if (limpio.indexOf(',') !== -1) {
+      // Hay coma: convención argentina, "." separa miles (si aparece) y ","
+      // separa decimales — ej. "$ 15.000,50" -> 15000.5.
+      limpio = limpio.replace(/\./g, '').replace(',', '.');
+    } else if (limpio.indexOf('.') !== -1) {
+      // Sin coma, con uno o más puntos: para un monto en pesos (sin
+      // centavos con 3+ decimales), un punto con EXACTAMENTE 3 dígitos
+      // después es casi siempre separador de miles, no decimal — ej.
+      // "15.000" son quince mil, no quince — igual que "1.234.567" (más de
+      // un punto, siempre miles). Cualquier otra cantidad de dígitos
+      // después del último punto (1, 2 o 4+) sí se interpreta como
+      // separador decimal real, ej. "12.5" o "100.50".
+      var partes = limpio.split('.');
+      if (partes.length > 2 || (partes.length === 2 && partes[1].length === 3)) {
+        limpio = partes.join('');
+      }
+    }
+    var n = Number(limpio);
+    return isFinite(n) ? n : 0;
+  }
 
   function normalizarFacturas(arr) {
     return (arr || []).map(function (r) {
@@ -2079,6 +2414,17 @@
         rotura: trimStr(r['ROTURA']),
         descripcion: trimStr(r['DESCRIPCIÓN DEL PRODUCTO']),
         codigo: trimStr(r['CÓDIGO']),
+        // Columna K nueva (2026-09): "Precio Estimado" — se insertó entre
+        // Código y Observaciones, corriendo una posición a todo lo que sigue.
+        // Se lee por nombre de encabezado (ver sheetToObjects en Code.gs), así
+        // que ese corrimiento no afecta ni a este campo ni a los de abajo —
+        // ninguno de los dos depende de la posición de columna. valorPorEncabezado
+        // prueba primero las 2 grafías más probables y, si ninguna aparece tal
+        // cual, cae a buscar cualquier encabezado que contenga "PRECIO" +
+        // "ESTIMADO" (ver comentario de la función) — y numMonto tolera que la
+        // celda haya quedado cargada como texto con formato "$ 15.000,50" en vez
+        // de número, en vez de solo num() (que con un string así devolvía 0).
+        precioEstimado: numMonto(valorPorEncabezado(r, ['PRECIO ESTIMADO', 'Precio Estimado'], ['PRECIO', 'ESTIM'])),
         observaciones: trimStr(r['OBSERVACIONES']),
         nFactura: trimStr(r['N° FACTURA']) || null
       };
@@ -2119,6 +2465,58 @@
     // Descarta las filas plantilla sin usar (fórmulas que dan $0,00 pero
     // todavía no tienen N° Factura cargado).
     }).filter(function (f) { return f.nFactura; });
+  }
+
+  // ============================================================
+  // Módulo Ventas — normalización de INGRESOS ESTIMADOS (hoja nueva, 2026-09,
+  // dentro del mismo Google Sheet de Ventas) — usada por el 2º gráfico de
+  // Margen Bruto. Columnas: NÚMERO DE FACTURA, Cliente, Obra, Tipo de
+  // Movimiento, Ingresos proyectados, Fecha Estimada de Cobro, Semana, Mes,
+  // OBSERVACIONES.
+  //
+  // No hay columna de Año en esta hoja, así que el año Y el mes de cada
+  // registro salen los dos de "Fecha Estimada de Cobro" (igual que Remitos
+  // usa "FECHA DE REMITO") — las columnas "Semana"/"Mes" de la hoja parecen
+  // ser derivadas de esa misma fecha para lectura humana, así que no hace
+  // falta leerlas para agrupar (evita depender de que "Mes" esté escrito con
+  // una grafía de mes que este tablero reconozca). Si "Fecha Estimada de
+  // Cobro" no es una fecha válida, la fila no se puede ubicar en el
+  // calendario y queda afuera de los totales por mes (mismo criterio que
+  // Remitos con fecha inválida).
+  function normalizarIngresosEstimados(arr) {
+    return (arr || []).map(function (r) {
+      var fechaRaw = valorPorEncabezado(r, ['Fecha Estimada de Cobro', 'FECHA ESTIMADA DE COBRO'], ['FECHA', 'COBRO']);
+      var fecha = fechaRaw ? new Date(fechaRaw) : null;
+      var valida = fecha instanceof Date && !isNaN(fecha.getTime());
+      return {
+        nFactura: trimStr(r['NÚMERO DE FACTURA']),
+        cliente: trimStr(r['Cliente']),
+        obra: trimStr(r['Obra']),
+        tipoMovimiento: trimStr(r['Tipo de Movimiento']),
+        // Misma lectura defensiva por encabezado que "Precio Estimado" en
+        // Remitos (ver valorPorEncabezado/numMonto más arriba): prueba grafías
+        // exactas y, si no aparece ninguna, cualquier encabezado que combine
+        // "INGRES" + "PROYECT" — y tolera que la celda venga como texto con
+        // formato "$ 1.234.567,00" en vez de número nativo.
+        ingresosProyectados: numMonto(valorPorEncabezado(r, ['Ingresos proyectados', 'Ingresos Proyectados', 'INGRESOS PROYECTADOS'], ['INGRES', 'PROYECT'])),
+        fecha: valida ? fecha : null,
+        anio: valida ? fecha.getFullYear() : null,
+        mesIdx: valida ? fecha.getMonth() : null,
+        semana: trimStr(r['Semana']),
+        mesTexto: trimStr(r['Mes']),
+        observaciones: trimStr(r['OBSERVACIONES'])
+      };
+    }).filter(function (r) { return r.anio !== null; });
+  }
+
+  // Ingreso proyectado de un mes: suma de "Ingresos Proyectados" de todas las
+  // filas de Ingresos Estimados cuya Fecha Estimada de Cobro cae en ese mes.
+  function ingresosEstimadosMes(anio, mesIdx) {
+    var total = 0;
+    RAW.ingresosEstimados.forEach(function (r) {
+      if (r.anio === anio && r.mesIdx === mesIdx) total += r.ingresosProyectados;
+    });
+    return total;
   }
 
   // Antes este mensaje mostraba siempre una nota fija ("los indicadores
@@ -3753,6 +4151,191 @@
       return [cats[i], formatMoney(cSueldos), formatMoney(cCompras), formatMoney(cSueldos + cCompras)];
     });
     renderSimpleTable(document.getElementById('chartCostoPorMes-table'), cols, trows);
+  }
+
+  // Ingreso estimado de un mes a partir de Ventas / Registro de Remitos:
+  // Cantidad vendida × Precio Estimado, sumado sobre todos los remitos de ese
+  // mes/año (agrupando por la fecha del remito). "Precio Estimado" es la
+  // columna K nueva de esa hoja — normalizarRemitosVentas() ya la lee de forma
+  // defensiva por nombre de encabezado (ver valorPorEncabezado), así que acá
+  // no hace falta preocuparse por el desplazamiento de columnas.
+  function ingresosRemitosMes(anio, mesIdx) {
+    var total = 0;
+    RAW.remitosVentas.forEach(function (r) {
+      if (r.anio === anio && r.mesIdx === mesIdx) total += r.cantidad * r.precioEstimado;
+    });
+    return total;
+  }
+
+  // Margen Bruto: dos gráficos de barras agrupadas (Ingresos / Costos /
+  // Margen) por mes, con la misma definición de Costos (Sueldos + Compras) y
+  // Margen (Ingresos − Costos) en los dos. Lo único que cambia entre ambos es
+  // la fuente de Ingresos:
+  //  - Gráfico 1: Ingresos estimados según Remitos (ingresosRemitosMes).
+  //  - Gráfico 2: Ingresos estimados según Cobros Proyectados, de la hoja
+  //    INGRESOS ESTIMADOS de Ventas (ingresosEstimadosMes).
+  // Esta función se llama desde los dos .then() de carga (Sueldos+Compras y
+  // Ventas, que son pedidos independientes) porque necesita datos de ambos:
+  // se puede llamar de forma segura ni bien resuelve cualquiera de los dos,
+  // gracias a que RAW arranca con arrays vacíos para las cuatro fuentes.
+  //
+  // Filtro de Meses (stateMargenBruto.meses): a diferencia de la Evolución de
+  // Ventas (que resalta sin recortar), acá SÍ recorta — a pedido explícito de
+  // Rocío (2026-09-25), si no se elige un mes, directamente no aparece en el
+  // gráfico. null = todos los meses con datos (mismo comportamiento que antes
+  // de que existiera este filtro); un array = únicamente esos meses, aunque
+  // alguno no tenga datos (se muestra en $0, porque el usuario lo eligió a propósito).
+  function renderMargenBruto() {
+    var anio = anioOperativo;
+    var mesesSet = {};
+    RAW.costoMensual.forEach(function (r) { if (r.anio === anio) mesesSet[r.mesIdx] = true; });
+    RAW.facturas.forEach(function (f) { if (f.anio === anio) mesesSet[f.mesIdx] = true; });
+    RAW.remitosVentas.forEach(function (r) { if (r.anio === anio) mesesSet[r.mesIdx] = true; });
+    RAW.ingresosEstimados.forEach(function (r) { if (r.anio === anio) mesesSet[r.mesIdx] = true; });
+    var mesesConDatos = Object.keys(mesesSet).map(Number).sort(function (a, b) { return a - b; });
+    var meses = stateMargenBruto.meses ? stateMargenBruto.meses.slice() : mesesConDatos;
+
+    var chartRemitosEl = document.getElementById('chartMargenRemitos');
+    var chartFacturacionEl = document.getElementById('chartMargenFacturacion');
+    if (!chartRemitosEl || !chartFacturacionEl) return; // el módulo todavía no está en el DOM
+
+    if (anio == null || !meses.length) {
+      emptyState(chartRemitosEl);
+      emptyState(chartFacturacionEl);
+      renderSimpleTable(document.getElementById('chartMargenRemitos-table'), ['Mes', 'Ingresos', 'Costos', 'Margen'], []);
+      renderSimpleTable(document.getElementById('chartMargenFacturacion-table'), ['Mes', 'Ingresos', 'Costos', 'Margen'], []);
+      return;
+    }
+
+    var cats = meses.map(function (m) { return MESES_CORTO[m]; });
+    var costos = meses.map(function (m) { return costoSueldosMes(anio, m) + costoComprasMes(anio, m); });
+    var ingresosRemitos = meses.map(function (m) { return ingresosRemitosMes(anio, m); });
+    var margenRemitos = meses.map(function (m, i) { return ingresosRemitos[i] - costos[i]; });
+    var ingresosEstimados = meses.map(function (m) { return ingresosEstimadosMes(anio, m); });
+    var margenEstimados = meses.map(function (m, i) { return ingresosEstimados[i] - costos[i]; });
+
+    // Margen usa color "de estado" (verde/rojo) en vez de un color categórico
+    // fijo — a pedido de Rocío, para que se note de un vistazo si el mes dio
+    // positivo o negativo. Usa COLOR_MARGEN_POSITIVO/NEGATIVO (ver esas
+    // constantes más arriba) — un rojo más apagado que el --status-critical
+    // de Altas/Bajas, a pedido de Rocío ("que no sea un rojo chillón"), sin
+    // tocar ese color compartido. Ingresos y Costos sí mantienen su color
+    // categórico fijo (Navy/Teal). Mismo criterio en los dos gráficos.
+    function colorPorSignoMargen(v) { return v < 0 ? COLOR_MARGEN_NEGATIVO : COLOR_MARGEN_POSITIVO; }
+    var leyendaConEstado = [
+      { color: PALETA_TORTA[0], label: 'Ingresos' },
+      { color: PALETA_TORTA[1], label: 'Costos' },
+      { color: COLOR_MARGEN_POSITIVO, label: 'Margen positivo' },
+      { color: COLOR_MARGEN_NEGATIVO, label: 'Margen negativo' }
+    ];
+
+    renderBarChart(chartRemitosEl, cats, [
+      { name: 'Ingresos', color: PALETA_TORTA[0], values: ingresosRemitos },
+      { name: 'Costos', color: PALETA_TORTA[1], values: costos },
+      { name: 'Margen', color: COLOR_MARGEN_POSITIVO, colorFor: colorPorSignoMargen, values: margenRemitos }
+    ], {
+      width: 960, height: 380, stacked: false, barLabels: true,
+      valueFormatter: formatCompact, tooltipFormatter: formatMoney,
+      legendItems: leyendaConEstado, xAxisLabel: 'Mes', yAxisLabel: 'Monto ($)'
+    });
+    renderSimpleTable(document.getElementById('chartMargenRemitos-table'), ['Mes', 'Ingresos', 'Costos', 'Margen'],
+      meses.map(function (m, i) { return [cats[i], formatMoney(ingresosRemitos[i]), formatMoney(costos[i]), formatMoney(margenRemitos[i])]; }));
+
+    // Gráfico 2 — Ingresos según la hoja "Ingresos Estimados" (Cobros
+    // Proyectados por semana, agrupados acá por mes). Misma estructura y
+    // mismos colores que el gráfico 1.
+    renderBarChart(chartFacturacionEl, cats, [
+      { name: 'Ingresos', color: PALETA_TORTA[0], values: ingresosEstimados },
+      { name: 'Costos', color: PALETA_TORTA[1], values: costos },
+      { name: 'Margen', color: COLOR_MARGEN_POSITIVO, colorFor: colorPorSignoMargen, values: margenEstimados }
+    ], {
+      width: 960, height: 380, stacked: false, barLabels: true,
+      valueFormatter: formatCompact, tooltipFormatter: formatMoney,
+      legendItems: leyendaConEstado, xAxisLabel: 'Mes', yAxisLabel: 'Monto ($)'
+    });
+    renderSimpleTable(document.getElementById('chartMargenFacturacion-table'), ['Mes', 'Ingresos', 'Costos', 'Margen'],
+      meses.map(function (m, i) { return [cats[i], formatMoney(ingresosEstimados[i]), formatMoney(costos[i]), formatMoney(margenEstimados[i])]; }));
+  }
+
+  // Filtro de Meses de Margen Bruto — mismo patrón de chips multi-selección
+  // que pintarChipsMesesVentas/poblarFiltrosVentas, pero sin Año propio (ver
+  // stateMargenBruto). Se inicializa una sola vez al cargar la página, ya que
+  // los 12 meses del chip no dependen de que hayan llegado datos todavía.
+  function inicializarFiltroMesesMargen() {
+    pintarChipsMesesMargen();
+    actualizarPeriodoSeleccionadoMargen();
+
+    var btnTodos = document.getElementById('btnMesesMargenTodos');
+    if (btnTodos) {
+      btnTodos.addEventListener('click', function () {
+        stateMargenBruto.meses = null;
+        pintarChipsMesesMargen();
+        actualizarPeriodoSeleccionadoMargen();
+        renderMargenBruto();
+      });
+    }
+
+    // "Limpiar filtros" — mismo patrón que btnLimpiarFiltrosVentas. Acá el
+    // único filtro es Meses, así que en la práctica hace lo mismo que
+    // "Todos", pero se agrega el botón aparte para que la barra de filtros
+    // quede igual que la de Ventas (a pedido de Rocío).
+    var btnLimpiarMargen = document.getElementById('btnLimpiarFiltrosMargen');
+    if (btnLimpiarMargen) {
+      btnLimpiarMargen.addEventListener('click', function () {
+        stateMargenBruto.meses = null;
+        pintarChipsMesesMargen();
+        actualizarPeriodoSeleccionadoMargen();
+        renderMargenBruto();
+      });
+    }
+  }
+
+  function pintarChipsMesesMargen() {
+    var wrap = document.getElementById('filtroMesesMargen');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    var seleccionActiva = stateMargenBruto.meses; // null = todos
+    var btnTodos = document.getElementById('btnMesesMargenTodos');
+    if (btnTodos) btnTodos.classList.toggle('active', !seleccionActiva);
+    MESES_CORTO.forEach(function (m, i) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn-ghost' + (!seleccionActiva || seleccionActiva.indexOf(i) !== -1 ? ' active' : '');
+      btn.textContent = m;
+      btn.addEventListener('click', function () {
+        var actuales;
+        if (stateMargenBruto.meses === null) {
+          // Estábamos en "todos": el primer click aísla ese mes en vez de
+          // sacarlo del conjunto completo (que dejaría los otros 11 puestos).
+          actuales = [i];
+        } else {
+          actuales = stateMargenBruto.meses.slice();
+          var pos = actuales.indexOf(i);
+          if (pos === -1) actuales.push(i); else actuales.splice(pos, 1);
+          actuales.sort(function (a, b) { return a - b; });
+        }
+        // Si quedaron los 12 meses marcados, volvemos a representarlo como "todos".
+        stateMargenBruto.meses = actuales.length === 12 ? null : actuales;
+        pintarChipsMesesMargen();
+        actualizarPeriodoSeleccionadoMargen();
+        renderMargenBruto();
+      });
+      wrap.appendChild(btn);
+    });
+  }
+
+  function actualizarPeriodoSeleccionadoMargen() {
+    var el = document.getElementById('periodoSeleccionadoLabelMargen');
+    if (!el) return;
+    var meses = stateMargenBruto.meses;
+    var anioTxt = anioOperativo != null ? ' ' + anioOperativo : '';
+    if (!meses) {
+      el.textContent = 'Período seleccionado: Todos los meses' + anioTxt;
+    } else if (meses.length === 1) {
+      el.textContent = 'Período seleccionado: ' + MESES_DISPLAY[meses[0]] + anioTxt;
+    } else {
+      el.textContent = 'Período seleccionado: ' + meses.length + ' meses' + anioTxt;
+    }
   }
 
   // Arma un .kpi-tile (mismo formato que renderKpis/renderKpisCompras) a partir
