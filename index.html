@@ -3562,6 +3562,22 @@
     });
 
     var meses = rangoMesesConDatos(Object.keys(totalesPorMes).map(Number));
+
+    // Resaltar el/los mes(es) elegido(s) en el filtro de arriba, atenuando el
+    // resto (2026-10, a pedido de Rocío: "como ya hacemos en otros
+    // gráficos") — mismo criterio exacto que "Evolución Mensual de Unidades
+    // Despachadas" (ver renderEvolucionVentas/renderEvolucionVentasTodos):
+    // el filtro de Meses de Ventas no recorta este gráfico de tendencia (se
+    // seguiría viendo el año completo), solo resalta vía emphasisIndex/
+    // catOpacity en renderBarChart. stateVentas.meses llega con índices
+    // absolutos de mes (0-11); hay que remapearlos a la posición dentro de
+    // `meses` (ya recortado por rangoMesesConDatos) porque renderBarChart
+    // interpreta emphasisIndex por posición, no por valor absoluto.
+    var mesesSeleccionados = stateVentas.meses; // null = todos
+    var emphasisRecortado = mesesSeleccionados == null ? null : mesesSeleccionados
+      .map(function (m) { return meses.indexOf(m); })
+      .filter(function (i) { return i !== -1; });
+
     var cats = meses.map(function (m) { return MESES_CORTO[m]; });
     var series = CATEGORIAS_PRODUCTOS_VENTAS.map(function (cat) {
       return {
@@ -3587,6 +3603,7 @@
     renderBarChart(contenedor, cats, series, {
       stacked: true, stackTotals: true, totalBadge: true,
       valueFormatter: formatCompact, tooltipFormatter: formatMoney,
+      emphasisIndex: emphasisRecortado,
       overlayLine: {
         name: 'Promedio Anual',
         color: COLOR_PROMEDIO_ANUAL_LINEA,
