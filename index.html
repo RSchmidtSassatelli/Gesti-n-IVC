@@ -348,6 +348,22 @@
   .table-wrap.visible { display: block; }
   .chart-holder.hidden { display: none; }
 
+  /* Logros — contenido traído del Google Doc, ya clasificado en bloques por
+     Code.gs (ver getLogrosContenido). Se usan clases propias en vez de
+     h2/h3 "crudos" para no heredar los estilos de section.block h2 / .card
+     h3 (pensados para los títulos fijos del tablero, no para títulos
+     arbitrarios que Rocío escriba en el Doc). max-width: ancho de lectura
+     cómodo, igual que un documento, aunque la tarjeta ocupe todo el ancho. */
+  .logros-contenido { max-width: 760px; font-size: 14px; line-height: 1.65; color: var(--text-primary); }
+  .logros-contenido .logros-h1 { font-size: 19px; font-weight: 700; margin: 22px 0 10px; }
+  .logros-contenido .logros-h1:first-child { margin-top: 2px; }
+  .logros-contenido .logros-h2 { font-size: 16.5px; font-weight: 600; margin: 18px 0 8px; }
+  .logros-contenido .logros-h3 { font-size: 14.5px; font-weight: 600; margin: 14px 0 6px; color: var(--text-secondary); }
+  .logros-contenido .logros-p { margin: 0 0 12px; }
+  .logros-contenido .logros-list { margin: 0 0 12px 20px; padding: 0; }
+  .logros-contenido .logros-list li { margin: 0 0 5px; }
+  .logros-contenido .logros-vacio { color: var(--text-muted); font-size: 13px; }
+
   svg text { fill: var(--text-secondary); font-size: 11px; font-family: inherit; }
   svg .axis-line { stroke: var(--baseline); stroke-width: 1; }
   svg .grid-line { stroke: var(--gridline); stroke-width: 1; }
@@ -483,12 +499,33 @@
 </header>
 
 <nav class="module-tabs" id="moduleTabs">
+  <button type="button" class="module-tab" data-modulo="logros">Logros</button>
   <button type="button" class="module-tab active" data-modulo="sueldos">Sueldos</button>
   <button type="button" class="module-tab" data-modulo="compras">Compras</button>
   <button type="button" class="module-tab" data-modulo="costos">Costos</button>
   <button type="button" class="module-tab" data-modulo="ventas">Ventas</button>
   <button type="button" class="module-tab" data-modulo="productividad">Margen Bruto</button>
 </nav>
+
+<div id="moduloLogros" class="modulo-panel hidden">
+
+<main>
+
+  <section class="block">
+    <h2>Logros</h2>
+    <p class="caption" id="logrosConexionMsg" style="padding:0 2px; margin:-6px 0 14px; display:none;"></p>
+    <div class="card full">
+      <div id="logrosContenido" class="logros-contenido"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="app-footer">
+  Contenido del Google Doc de Logros — se actualiza solo, sin tocar este archivo, cada vez que se recarga esta página. Última carga: <span id="footerTimestampLogros">—</span>.
+</footer>
+
+</div>
 
 <div id="moduloSueldos" class="modulo-panel">
 
@@ -512,7 +549,48 @@
   </section>
 
   <section class="block">
+    <h2>Horas y Adicionales</h2>
+    <div class="filters" style="padding:10px 16px; border:none; position:static; margin-bottom:14px;">
+      <label>Quincena
+        <select id="filtroHorasQuincena">
+          <option value="todas">Todas</option>
+          <option value="Q1">Q1</option>
+          <option value="Q2">Q2</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="kpi-row" id="kpiHorasRow" style="margin-bottom:14px;"></div>
+
+    <div class="cards">
+      <div class="card full">
+        <div class="card-head">
+          <h3>Horas por Mes (Normales / 50% / 100%)</h3>
+          <div class="toolbar"><button class="btn-ghost" data-toggle-table="chartHorasMes">Ver tabla</button></div>
+        </div>
+        <p class="caption">Total de horas trabajadas por mes, desglosadas por tipo. El mes elegido arriba queda resaltado.</p>
+        <div class="chart-holder" id="chartHorasMes"></div>
+        <div class="table-wrap" id="chartHorasMes-table"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Horas por Persona</h3>
+          <input class="search-box" id="buscarPersona" type="text" placeholder="Buscar persona…">
+        </div>
+        <p class="caption">Según los filtros de Mes, Quincena y Categoría. Hacé clic en un encabezado para ordenar.</p>
+        <div class="scroll-table" id="tablaHorasPersona"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Horas por Categoría</h3></div>
+        <p class="caption">Total de horas trabajadas en el período filtrado, por categoría.</p>
+        <div class="chart-holder" id="chartHorasCategoria"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
     <h2>Dotación y Rotación</h2>
+    <div class="kpi-row cols-4" id="kpiRowDotacion" style="margin-bottom:14px;"></div>
     <div class="cards">
       <div class="card">
         <div class="card-head"><h3>Personal Activo por Categoría</h3></div>
@@ -579,46 +657,6 @@
     </div>
   </section>
 
-  <section class="block">
-    <h2>Horas y Adicionales</h2>
-    <div class="filters" style="padding:10px 16px; border:none; position:static; margin-bottom:14px;">
-      <label>Quincena
-        <select id="filtroHorasQuincena">
-          <option value="todas">Todas</option>
-          <option value="Q1">Q1</option>
-          <option value="Q2">Q2</option>
-        </select>
-      </label>
-    </div>
-
-    <div class="kpi-row" id="kpiHorasRow" style="margin-bottom:14px;"></div>
-
-    <div class="cards">
-      <div class="card">
-        <div class="card-head">
-          <h3>Horas por Mes (Normales / 50% / 100%)</h3>
-          <div class="toolbar"><button class="btn-ghost" data-toggle-table="chartHorasMes">Ver tabla</button></div>
-        </div>
-        <p class="caption">Total de horas trabajadas por mes, desglosadas por tipo. El mes elegido arriba queda resaltado.</p>
-        <div class="chart-holder" id="chartHorasMes"></div>
-        <div class="table-wrap" id="chartHorasMes-table"></div>
-      </div>
-      <div class="card">
-        <div class="card-head"><h3>Horas por Categoría</h3></div>
-        <p class="caption">Total de horas trabajadas en el período filtrado, por categoría.</p>
-        <div class="chart-holder" id="chartHorasCategoria"></div>
-      </div>
-      <div class="card full">
-        <div class="card-head">
-          <h3>Horas por Persona</h3>
-          <input class="search-box" id="buscarPersona" type="text" placeholder="Buscar persona…">
-        </div>
-        <p class="caption">Según los filtros de Mes, Quincena y Categoría. Hacé clic en un encabezado para ordenar.</p>
-        <div class="scroll-table" id="tablaHorasPersona"></div>
-      </div>
-    </div>
-  </section>
-
 </main>
 
 <footer class="app-footer">
@@ -652,32 +690,72 @@
   </section>
 
   <section class="block">
-    <h2>Análisis de Productos Vendidos</h2>
-    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Cantidad de unidades despachadas según el Registro de Remitos. Los Postes se agrupan por nivel de tensión, mientras que Crucetas, Ménsulas y Vínculos se muestran como categorías independientes. Los productos restantes se agrupan en "Otros". La información se actualiza según el Año y los Meses seleccionados.</p>
+    <h2>Despacho de Mercadería</h2>
+    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Analiza la mercadería despachada según el Registro de Remitos — tanto en unidades físicas como en su valorización económica estimada (Cantidad despachada × Precio Estimado). No es facturación: para eso ver "Ingresos y Facturación" más abajo. Los Postes se agrupan por nivel de tensión, mientras que Crucetas, Ménsulas y Vínculos se muestran como categorías independientes. Los productos restantes se agrupan en "Otros".</p>
     <div class="cards">
       <div class="card full">
         <div class="card-head">
-          <h3>Unidades Vendidas por Categoría</h3>
+          <h3>Unidades Despachadas por Categoría</h3>
           <div class="toolbar"><button class="btn-ghost" data-toggle-table="chartProductosVentas">Ver tabla</button></div>
         </div>
+        <p class="caption" id="periodoUnidadesDespachadas" style="padding:0 2px; margin:-6px 0 10px; font-weight:600;">Período: —</p>
         <div class="chart-holder" id="chartProductosVentas"></div>
         <div class="table-wrap" id="chartProductosVentas-table"></div>
       </div>
       <div class="card full">
         <div class="card-head">
-          <h3>Evolución Mensual por Categoría</h3>
-          <div class="toolbar"><button class="btn-ghost" data-toggle-table="chartEvolucionVentas">Ver tabla</button></div>
+          <h3>Evolución Mensual de Unidades Despachadas</h3>
+          <div class="toolbar">
+            <button class="btn-ghost" id="toggleEvolucionVentas">Ocultar gráfico</button>
+            <button class="btn-ghost" data-toggle-table="chartEvolucionVentas">Ver tabla</button>
+          </div>
         </div>
-        <p class="caption">Muestra la evolución mensual de la categoría de producto seleccionada. Cuando la categoría tiene subcategorías, cada mes se desagrega por nivel: Tensión en Postes y Simple/Doble/Triple en Crucetas, Ménsulas y Vínculos.</p>
-        <div class="toolbar" style="margin-bottom:10px; flex-wrap:wrap;">
-          <button class="btn-ghost active" data-familia-tab="postes">Postes</button>
-          <button class="btn-ghost" data-familia-tab="crucetas">Crucetas</button>
-          <button class="btn-ghost" data-familia-tab="mensulas">Ménsulas</button>
-          <button class="btn-ghost" data-familia-tab="vinculos">Vínculos</button>
-          <button class="btn-ghost" data-familia-tab="otros">Otros</button>
+        <div id="evolucionVentasBody">
+          <p class="caption">Evolución mensual de la categoría de producto seleccionada, desde el primer mes con despachos registrados (para no mostrar meses vacíos sin información representativa). Cuando la categoría tiene subcategorías, cada mes se desagrega por nivel: Tensión en Postes y Simple/Doble/Triple en Crucetas, Ménsulas y Vínculos.</p>
+          <div class="toolbar" style="margin-bottom:10px; flex-wrap:wrap;">
+            <button class="btn-ghost active" data-familia-tab="postes">Postes</button>
+            <button class="btn-ghost" data-familia-tab="crucetas">Crucetas</button>
+            <button class="btn-ghost" data-familia-tab="mensulas">Ménsulas</button>
+            <button class="btn-ghost" data-familia-tab="vinculos">Vínculos</button>
+            <button class="btn-ghost" data-familia-tab="otros">Otros</button>
+          </div>
+          <div class="chart-holder" id="chartEvolucionVentas"></div>
+          <div class="table-wrap" id="chartEvolucionVentas-table"></div>
         </div>
-        <div class="chart-holder" id="chartEvolucionVentas"></div>
-        <div class="table-wrap" id="chartEvolucionVentas-table"></div>
+      </div>
+      <div class="card full">
+        <div class="card-head">
+          <h3>Monto Valorizado por Categoría</h3>
+          <div class="toolbar"><button class="btn-ghost" data-toggle-table="chartValorizacionCategoria">Ver tabla</button></div>
+        </div>
+        <p class="caption">Valor estimado de la mercadería despachada (Cantidad × Precio Estimado de cada remito), por categoría. Es una valorización teórica de los despachos, no necesariamente lo efectivamente facturado.</p>
+        <p class="caption" id="periodoValorizacionCategoria" style="padding:0 2px; margin:-6px 0 10px; font-weight:600;">Período: —</p>
+        <div class="chart-holder" id="chartValorizacionCategoria"></div>
+        <div class="table-wrap" id="chartValorizacionCategoria-table"></div>
+      </div>
+      <div class="card full">
+        <div class="card-head">
+          <h3>Evolución Mensual del Monto Valorizado de los Despachos</h3>
+          <div class="toolbar"><button class="btn-ghost" data-toggle-table="chartEvolucionValorizacion">Ver tabla</button></div>
+        </div>
+        <p class="caption">Mismo valor estimado (Cantidad × Precio Estimado) que el gráfico de arriba, mes a mes y por categoría, desde el primer mes con despachos registrados.</p>
+        <div class="chart-holder" id="chartEvolucionValorizacion"></div>
+        <div class="table-wrap" id="chartEvolucionValorizacion-table"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>Ingresos y Facturación</h2>
+    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Se alimenta de Seguimiento de Clientes (FACTURAS e INGRESOS PROYECTADOS). Compara, mes a mes, la Facturación Registrada contra los Ingresos Proyectados del año elegido en el filtro de arriba.</p>
+    <div class="cards">
+      <div class="card full">
+        <div class="card-head">
+          <h3>Facturación Registrada vs. Ingresos Proyectados</h3>
+          <div class="toolbar"><button class="btn-ghost" data-toggle-table="chartIngresosFacturacionVentas">Ver tabla</button></div>
+        </div>
+        <div class="chart-holder" id="chartIngresosFacturacionVentas"></div>
+        <div class="table-wrap" id="chartIngresosFacturacionVentas-table"></div>
       </div>
     </div>
   </section>
@@ -709,7 +787,7 @@
   </section>
 
   <section class="block">
-    <h2>Distribución de Facturación</h2>
+    <h2>Distribución de las Compras</h2>
     <p class="caption" style="padding:0 2px; margin:-2px 0 12px;">Participación de cada categoría de compra en el total facturado por compras de <span id="anioTortasCompras">—</span>. Los valores con menor peso se agrupan en "Otros".</p>
     <div class="pie-grid">
       <div class="card">
@@ -760,7 +838,7 @@
   </section>
 
   <section class="block">
-    <h2>Facturación por Mes</h2>
+    <h2>Compras por Mes</h2>
     <div class="cards">
       <div class="card full">
         <div class="card-head">
@@ -768,16 +846,6 @@
           <div class="toolbar">
             <button class="btn-ghost" data-toggle-table="chartFacturasMes">Ver tabla</button>
           </div>
-        </div>
-        <div class="filters" style="padding:6px 0 16px; border:none; position:static; margin-bottom:6px; background:transparent;">
-          <label>Categoría <select id="filtroCatFactura"></select></label>
-          <label>Categoría Macro <select id="filtroCatMacroFactura"></select></label>
-          <label>Tipo de Ítem <select id="filtroTipoItemFactura"></select></label>
-          <label>Imputación Gestión <select id="filtroImputacionFactura"></select></label>
-          <label>Flujo de Fondos <select id="filtroFlujoFactura"></select></label>
-          <label>Comportamiento del Costo <select id="filtroComportamientoFactura"></select></label>
-          <label>Área <select id="filtroAreaFactura"></select></label>
-          <button type="button" class="btn-ghost" id="btnLimpiarFiltrosFacturas">Limpiar filtros</button>
         </div>
         <div class="filters" style="padding:6px 0 4px; border:none; position:static; margin-bottom:2px; background:transparent;">
           <label>Desglosar por
@@ -788,6 +856,57 @@
         <div class="legend-check-row" id="legendFacturasDesglose"></div>
         <div class="chart-holder" id="chartFacturasMes"></div>
         <div class="table-wrap" id="chartFacturasMes-table"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Compras por Subcategoría</h3>
+          <button class="btn-ghost" data-toggle-table="barSubcategoriaCompras">Ver tabla</button>
+        </div>
+        <p class="caption">Total facturado en el período, por subcategoría de factura.</p>
+        <div class="chart-holder" id="barSubcategoriaCompras"></div>
+        <div class="table-wrap" id="barSubcategoriaCompras-table"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Compras por Categoría</h3>
+          <button class="btn-ghost" data-toggle-table="barCategoriaCompras">Ver tabla</button>
+        </div>
+        <p class="caption">Total facturado en el período, por categoría.</p>
+        <div class="chart-holder" id="barCategoriaCompras"></div>
+        <div class="table-wrap" id="barCategoriaCompras-table"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Compras por Categoría Macro</h3>
+          <button class="btn-ghost" data-toggle-table="barCategoriaMacroCompras">Ver tabla</button>
+        </div>
+        <p class="caption">Total facturado en el período, por categoría macro.</p>
+        <div class="chart-holder" id="barCategoriaMacroCompras"></div>
+        <div class="table-wrap" id="barCategoriaMacroCompras-table"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Compras por Imputación de Gestión</h3>
+          <button class="btn-ghost" data-toggle-table="barImputacionCompras">Ver tabla</button>
+        </div>
+        <p class="caption">Total facturado en el período, por imputación de gestión (costos directos, indirectos, de producción, y demás imputaciones cargadas).</p>
+        <div class="chart-holder" id="barImputacionCompras"></div>
+        <div class="table-wrap" id="barImputacionCompras-table"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>Mantenimiento y Reparaciones</h2>
+    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Agrupa las subcategorías de factura vinculadas a mantenimiento, reparaciones y funcionamiento técnico de la planta: Repuestos, Reparaciones / Servicio Técnico, Herramientas y Componentes Menores, Material Eléctrico y Honorarios Técnicos.</p>
+    <div class="cards">
+      <div class="card full">
+        <div class="card-head">
+          <h3>Compras de Mantenimiento y Reparaciones por Concepto</h3>
+          <button class="btn-ghost" data-toggle-table="barMantenimientoCompras">Ver tabla</button>
+        </div>
+        <div class="chart-holder" id="barMantenimientoCompras"></div>
+        <div class="table-wrap" id="barMantenimientoCompras-table"></div>
       </div>
     </div>
   </section>
@@ -817,17 +936,23 @@
     <h2>Resumen General por Mes</h2>
     <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Muestra el costo total por mes y su equivalente promedio por día hábil y por hora trabajada.</p>
     <div class="kpi-row" id="kpiRowCostosTotal"></div>
-    <p class="caption" style="padding:0 2px; margin:14px 2px 0; font-size:12px; line-height:1.7;">
-      <strong>Costo Total:</strong> Sueldos (haberes + aportes + contribuciones) + Total Facturación de Compras.<br>
-      <strong>Costo por Día:</strong> comprende días hábiles (lunes a viernes, sin descontar feriados).<br>
-      <strong>Costo por Hora:</strong> utiliza las horas trabajadas cargadas en la planilla de sueldos.
-    </p>
   </section>
 
   <section class="block">
     <h2>Promedios del Año (Enero&nbsp;–&nbsp;<span id="mesPromedioCostosLabel">—</span>)</h2>
     <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Muestran cuánto costó, en promedio, un mes, un día hábil y una hora de trabajo considerando todo el período enero–<span id="mesPromedioCostosLabelCaption">—</span>.</p>
     <div class="kpi-row" id="kpiRowCostosPromedio"></div>
+    <div class="cards" style="margin-top:14px;">
+      <div class="card full">
+        <div class="card-head">
+          <h3>Evolución Mensual del Costo Promedio Diario</h3>
+          <button class="btn-ghost" data-toggle-table="chartCostoPromedioDiarioMensual">Ver tabla</button>
+        </div>
+        <p class="caption">Costo Promedio Diario de cada mes del año (Costo Total del mes ÷ días hábiles del mes) — misma metodología que el KPI "Costo Promedio Diario" de arriba, mes a mes en vez de acumulada.</p>
+        <div class="chart-holder" id="chartCostoPromedioDiarioMensual"></div>
+        <div class="table-wrap" id="chartCostoPromedioDiarioMensual-table"></div>
+      </div>
+    </div>
   </section>
 
   <section class="block">
@@ -856,7 +981,7 @@
           <h3>Costo Total por Mes (Sueldos + Compras)</h3>
           <button class="btn-ghost" data-toggle-table="chartCostoPorMes">Ver tabla</button>
         </div>
-        <p class="caption">Para cada mes, la columna apilada suma el costo de Sueldos (haberes + aportes y contribuciones) y el Total Facturación de Compras de ese mes.</p>
+        <p class="caption">Para cada mes, la columna apilada suma el costo de Sueldos (haberes + aportes y contribuciones) y el Total Facturación de Compras de ese mes. Enero, Febrero y Marzo todavía no tienen datos reales cargados: se muestran con un valor imputado (ver referencia punteada en la leyenda).</p>
         <div class="chart-holder" id="chartCostoPorMes"></div>
         <div class="table-wrap" id="chartCostoPorMes-table"></div>
       </div>
@@ -888,24 +1013,24 @@
 
   <section class="block">
     <h2>Margen Bruto Mensual</h2>
-    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Compara, mes a mes, los Ingresos, los Costos (Sueldos + Compras) y el Margen Bruto (Ingresos − Costos).</p>
+    <p class="caption" style="padding:0 2px; margin:-6px 0 14px;">Dos lecturas distintas del Margen Bruto, alineadas con los dos bloques de Ventas — misma metodología de Costos (Sueldos + Compras) y misma fórmula de Margen (Ingresos − Costos) en las dos, para que sean directamente comparables entre sí.</p>
     <div class="cards">
       <div class="card full">
         <div class="card-head">
-          <h3>Ingresos Estimados según Cobros Proyectados</h3>
+          <h3>Margen Bruto según Facturación e Ingresos Proyectados</h3>
           <button class="btn-ghost" data-toggle-table="chartMargenFacturacion">Ver tabla</button>
         </div>
-        <p class="caption">Ingresos estimados: suma de "Ingresos Proyectados", agrupada por mes según la Fecha Estimada de Cobro de cada registro. Costos: Sueldos + Compras del mes. Margen estimado: Ingresos estimados − Costos.</p>
+        <p class="caption">Ingresos: Ingresos Proyectados de "Seguimiento de Clientes" (misma fuente que el bloque "Ingresos y Facturación" de Ventas), suma por mes según la Fecha Estimada de Cobro de cada registro. Costos: Sueldos + Compras del mes. Margen Bruto: Ingresos − Costos.</p>
         <div class="chart-holder" id="chartMargenFacturacion"></div>
         <div class="table-wrap" id="chartMargenFacturacion-table"></div>
       </div>
 
       <div class="card full">
         <div class="card-head">
-          <h3>Ingresos Estimados según Remitos</h3>
+          <h3>Margen Bruto según Despacho de Mercadería</h3>
           <button class="btn-ghost" data-toggle-table="chartMargenRemitos">Ver tabla</button>
         </div>
-        <p class="caption">Ingresos estimados: según registro de remitos y precios estimados. Costos: Sueldos + Compras del mes. Margen estimado: Ingresos estimados − Costos.</p>
+        <p class="caption">Ingreso Estimado por Despacho: Cantidad despachada × Precio Estimado de cada remito (misma valorización que el bloque "Despacho de Mercadería" de Ventas), sumado por mes. Costos: Sueldos + Compras del mes. Margen Bruto: Ingreso Estimado por Despacho − Costos.</p>
         <div class="chart-holder" id="chartMargenRemitos"></div>
         <div class="table-wrap" id="chartMargenRemitos-table"></div>
       </div>
@@ -932,6 +1057,7 @@
   (function initModuleTabs() {
     var tabs = document.querySelectorAll('.module-tab');
     var panels = {
+      logros: document.getElementById('moduloLogros'),
       sueldos: document.getElementById('moduloSueldos'),
       compras: document.getElementById('moduloCompras'),
       costos: document.getElementById('moduloCostos'),
@@ -1555,14 +1681,64 @@
     var width = 780;
     var rowH = opts.rowHeight || 34;
     var barFrac = opts.barThickness || 0.6;
-    var margin = { top: 8, right: 46, bottom: 8, left: opts.leftMargin || 140 };
-    var plotW = width - margin.left - margin.right;
-    var plotH = items.length * rowH;
-    var height = plotH + margin.top + margin.bottom;
-
     var maxVal = Math.max.apply(null, items.map(function (i) { return num(i.value); }).concat([1]));
     var fmt = opts.valueFormatter || formatCompact;
     var fontScale = opts.rowHeight ? Math.min(1.6, opts.rowHeight / 34) : 1;
+    var valueFontSize = 11 * fontScale;
+
+    // El margen derecho (donde va el monto al final de cada barra) antes era
+    // un número fijo (46px) que alcanzaba para unidades ("135") pero no para
+    // montos en pesos más largos ("$14,3M" o compacto en general): el texto
+    // terminaba saliéndose del recuadro del gráfico. Ahora se mide el ancho
+    // real del valor más largo (con el mismo font-size/weight con el que se
+    // va a dibujar, ver .end-label en el CSS) y el margen se agranda lo
+    // necesario para que siempre entre completo, sin achicar los demás
+    // gráficos que ya entraban con el margen mínimo de 46px.
+    var valueFont = '600 ' + valueFontSize.toFixed(1) + 'px system-ui, -apple-system, "Segoe UI", sans-serif';
+    var maxValueWidth = Math.max.apply(null, items.map(function (i) { return measureTextWidth(fmt(i.value), valueFont); }).concat([0]));
+    var margin = { top: 8, right: Math.max(46, maxValueWidth + 20), bottom: 8, left: opts.leftMargin || 140 };
+    var plotW = width - margin.left - margin.right;
+
+    // Etiquetas de categoría con salto de línea opcional (2026-10, pedido
+    // de Rocío para "Mantenimiento y Reparaciones"): SOLO se activa si el
+    // llamador pasa opts.wrapLabels — el resto de los gráficos que usan
+    // este mismo renderer (Sueldos, Compras, etc.) no pasan esa opción y
+    // quedan exactamente como antes. Partimos el texto por palabras hasta
+    // que cada línea entra en el ancho disponible (medido con canvas, no
+    // a ojo), y si alguna etiqueta necesita más de una línea agrandamos
+    // la altura de fila para todas, así quedan prolijas y alineadas.
+    var wrapLabels = !!opts.wrapLabels;
+    var labelFontSize = opts.labelFontSize || (11 * fontScale);
+    var labelLineHeight = opts.labelLineHeight || (labelFontSize + 2);
+    var labelFont = labelFontSize.toFixed(1) + 'px system-ui, -apple-system, "Segoe UI", sans-serif';
+    var maxLabelWidth = Math.max(40, margin.left - 16);
+
+    function partirEnLineas(texto) {
+      if (!wrapLabels || measureTextWidth(texto, labelFont) <= maxLabelWidth) return [texto];
+      var palabras = texto.split(' ');
+      var lineas = [];
+      var actual = '';
+      palabras.forEach(function (palabra) {
+        var prueba = actual ? actual + ' ' + palabra : palabra;
+        if (actual && measureTextWidth(prueba, labelFont) > maxLabelWidth) {
+          lineas.push(actual);
+          actual = palabra;
+        } else {
+          actual = prueba;
+        }
+      });
+      if (actual) lineas.push(actual);
+      return lineas.length ? lineas : [texto];
+    }
+
+    var lineasPorItem = items.map(function (it) { return partirEnLineas(it.label); });
+    if (wrapLabels) {
+      var maxLineas = Math.max.apply(null, lineasPorItem.map(function (l) { return l.length; }).concat([1]));
+      rowH = Math.max(rowH, maxLineas * labelLineHeight + 12);
+    }
+
+    var plotH = items.length * rowH;
+    var height = plotH + margin.top + margin.bottom;
 
     var svg = el('svg', { viewBox: '0 0 ' + width + ' ' + height });
     var plot = el('g', { transform: 'translate(' + margin.left + ',' + margin.top + ')' });
@@ -1580,8 +1756,20 @@
       rect.addEventListener('pointerleave', hideTooltip);
       plot.appendChild(rect);
 
-      var lbl = el('text', { x: -10, y: y + h / 2 + 4, 'text-anchor': 'end', style: fontScale !== 1 ? ('font-size:' + (11 * fontScale).toFixed(1) + 'px') : '' });
-      lbl.textContent = it.label;
+      var lineas = lineasPorItem[i];
+      var lbl = el('text', { x: -10, 'text-anchor': 'end', style: 'font-size:' + labelFontSize.toFixed(1) + 'px' });
+      if (lineas.length <= 1) {
+        lbl.setAttribute('y', (y + h / 2 + 4).toFixed(1));
+        lbl.textContent = lineas[0];
+      } else {
+        var totalH = (lineas.length - 1) * labelLineHeight;
+        var firstY = (y + h / 2) - totalH / 2 + labelFontSize * 0.35;
+        lineas.forEach(function (linea, li) {
+          var tspan = el('tspan', { x: -10, y: (firstY + li * labelLineHeight).toFixed(1) });
+          tspan.textContent = linea;
+          lbl.appendChild(tspan);
+        });
+      }
       plot.appendChild(lbl);
 
       var val = el('text', { x: w + 8, y: y + h / 2 + 4, class: 'end-label', style: fontScale !== 1 ? ('font-size:' + (11 * fontScale).toFixed(1) + 'px') : '' });
@@ -1696,18 +1884,54 @@
 
     var width = 780, height = opts.height || 300;
     var legendH = (series.length > 1) ? 26 : 0;
-    var margin = { top: 14 + legendH, right: 20, bottom: 34, left: opts.leftMargin || 60 };
-    var plotW = width - margin.left - margin.right;
-    var plotH = height - margin.top - margin.bottom;
+    var fmt = opts.valueFormatter || formatCompact;
 
     var allVals = series.reduce(function (acc, s) { return acc.concat(s.values.filter(function(v){return v!==null;}).map(num)); }, []);
     var maxVal = Math.max.apply(null, allVals.concat([0]));
     var ticks = niceTicks(maxVal || 1, 5);
     var yMax = ticks[ticks.length - 1] || 1;
+
+    // Márgenes ajustados al contenido real en vez de valores fijos (2026-10,
+    // pedido de Rocío para "Facturación Registrada vs. Ingresos Proyectados":
+    // "aprovechar mejor el espacio... las líneas ocupen mejor el espacio
+    // disponible"). Solo se activa con opts.tightMargins — los demás gráficos
+    // que usan renderLineChart (Costo Real por Hora, Margen Bruto, Precios,
+    // Altas/Bajas) no pasan esa opción y quedan exactamente como antes.
+    var axisFont = '11px system-ui, -apple-system, "Segoe UI", sans-serif';
+    var leftMargin = opts.leftMargin;
+    if (leftMargin == null) {
+      if (opts.tightMargins) {
+        var maxTickWidth = Math.max.apply(null, ticks.map(function (t) { return measureTextWidth(fmt(t), axisFont); }).concat([0]));
+        leftMargin = Math.max(34, maxTickWidth + 14);
+      } else {
+        leftMargin = 60;
+      }
+    }
+
+    // Margen derecho: con endLabels activo (de las etiquetas con el nombre de
+    // cada serie al final de la línea), un margen fijo de 20px alcanzaba para
+    // nombres cortos pero no para "Facturación Registrada"/"Ingresos
+    // Proyectados" — quedaban cortadas o saliéndose del recuadro. Se mide el
+    // ancho real del nombre más largo (con el tamaño de fuente efectivo) y el
+    // margen se agranda lo necesario; si endLabels está desactivado (el resto
+    // de los gráficos de este tablero lo desactiva) el margen queda en 20px,
+    // igual que antes.
+    var endLabelFontSize = opts.endLabelFontSize || 11;
+    var showEndLabels = opts.endLabels !== false;
+    var rightMargin = 20;
+    if (showEndLabels) {
+      var endLabelFont = endLabelFontSize.toFixed(1) + 'px system-ui, -apple-system, "Segoe UI", sans-serif';
+      var maxNameWidth = Math.max.apply(null, series.map(function (s) { return measureTextWidth(s.name, endLabelFont); }).concat([0]));
+      rightMargin = Math.max(20, maxNameWidth + 16);
+    }
+
+    var margin = { top: 14 + legendH, right: rightMargin, bottom: 34, left: leftMargin };
+    var plotW = width - margin.left - margin.right;
+    var plotH = height - margin.top - margin.bottom;
+
     function yScale(v) { return plotH - (v / yMax) * plotH; }
     var stepX = categories.length > 1 ? plotW / (categories.length - 1) : 0;
     function xScale(i) { return categories.length > 1 ? i * stepX : plotW / 2; }
-    var fmt = opts.valueFormatter || formatCompact;
 
     var svg = el('svg', { viewBox: '0 0 ' + width + ' ' + height });
     var plot = el('g', { transform: 'translate(' + margin.left + ',' + margin.top + ')' });
@@ -1724,6 +1948,14 @@
       lbl.textContent = cat;
       plot.appendChild(lbl);
     });
+
+    // Etiquetas finales (nombre de cada serie al lado del último punto): se
+    // juntan acá en vez de dibujarse una por una porque, si dos series
+    // terminan muy cerca en altura (ver "Facturación Registrada vs. Ingresos
+    // Proyectados"), hace falta separarlas verticalmente para que no se
+    // superpongan — no se puede decidir esa separación serie por serie sin
+    // conocer antes la posición final de todas.
+    var etiquetasFinales = [];
 
     series.forEach(function (ser) {
       var pts = ser.values.map(function (v, i) { return v === null || v === undefined ? null : [xScale(i), yScale(num(v))]; });
@@ -1748,13 +1980,37 @@
       });
       var lastPt = null;
       for (var i = pts.length - 1; i >= 0; i--) { if (pts[i]) { lastPt = pts[i]; break; } }
-      if (lastPt && opts.endLabels !== false) {
-        var el2 = el('text', { x: lastPt[0] + 6, y: lastPt[1] + 4, class: 'end-label', opacity: serOpacity });
-        el2.textContent = ser.name;
-        el2.setAttribute('fill', ser.color);
-        plot.appendChild(el2);
+      if (lastPt && showEndLabels) {
+        etiquetasFinales.push({ ser: ser, pt: lastPt, opacity: serOpacity });
       }
     });
+
+    if (etiquetasFinales.length) {
+      // Si dos etiquetas quedarían a menos de una línea de alto de distancia,
+      // se separan simétricamente (la de arriba sube, la de abajo baja) en
+      // vez de superponerse — orden por altura primero para separar siempre
+      // el par más próximo.
+      etiquetasFinales.sort(function (a, b) { return a.pt[1] - b.pt[1]; });
+      var minGap = endLabelFontSize + 5;
+      // Compara cada etiqueta contra la posición ya ajustada de la anterior
+      // (no contra su posición original), así una cadena de 3+ etiquetas
+      // cercanas entre sí también queda prolijamente espaciada en cascada.
+      etiquetasFinales[0].y = etiquetasFinales[0].pt[1];
+      for (var gj = 1; gj < etiquetasFinales.length; gj++) {
+        var ant = etiquetasFinales[gj - 1], act = etiquetasFinales[gj];
+        act.y = act.pt[1];
+        if (act.y - ant.y < minGap) act.y = ant.y + minGap;
+      }
+      etiquetasFinales.forEach(function (et) {
+        var el2 = el('text', {
+          x: et.pt[0] + 6, y: et.y + 4, class: 'end-label', opacity: et.opacity,
+          style: 'font-size:' + endLabelFontSize.toFixed(1) + 'px'
+        });
+        el2.textContent = et.ser.name;
+        el2.setAttribute('fill', et.ser.color);
+        plot.appendChild(el2);
+      });
+    }
 
     // crosshair overlay
     var hoverLine = el('line', { x1: 0, x2: 0, y1: 0, y2: plotH, stroke: cssVar('--baseline'), 'stroke-width': 1, opacity: 0 });
@@ -1769,8 +2025,27 @@
       hoverLine.setAttribute('x1', xScale(idx));
       hoverLine.setAttribute('x2', xScale(idx));
       hoverLine.setAttribute('opacity', 1);
+      // Valor de cada fila: fmt() por defecto, salvo que la serie defina
+      // zeroLabel y el valor de ese mes sea 0 — ahí se muestra ese texto en
+      // vez de "$0" (ej. "Sin facturación registrada" para Facturación
+      // Registrada, para dejar claro que es falta de carga y no que el
+      // gráfico esté vacío por error), sin agregar nada permanente al
+      // gráfico, solo en el tooltip.
       var rows = series.filter(function(s){ return s.values[idx] !== null && s.values[idx] !== undefined; })
-        .map(function (s) { return { label: s.name, value: fmt(num(s.values[idx])), color: s.color }; });
+        .map(function (s) {
+          var v = num(s.values[idx]);
+          var texto = (v === 0 && s.zeroLabel) ? s.zeroLabel : fmt(v);
+          return { label: s.name, value: texto, color: s.color, _raw: v };
+        });
+      // Fila de Diferencia (2026-10, pedido de Rocío para "Facturación
+      // Registrada vs. Ingresos Proyectados"): opt-in vía opts.showDiff, solo
+      // tiene sentido con exactamente 2 series — se calcula serie[0] - serie[1]
+      // de ese mismo mes (no se muestra si a alguna de las dos le falta el
+      // dato de ese mes). Sin color de referencia (no es una serie real).
+      if (opts.showDiff && series.length === 2 && rows.length === 2) {
+        var diff = rows[0]._raw - rows[1]._raw;
+        rows.push({ label: opts.diffLabel || 'Diferencia', value: fmt(diff) });
+      }
       renderTooltip(categories[idx], rows);
       showTooltip(evt);
     });
@@ -1846,7 +2121,7 @@
   // los dos lados — sin este default, leer p.ej. RAW.remitosVentas antes de
   // que responda el pedido de Ventas tiraría error en vez de mostrar el
   // gráfico parcial con lo que ya haya.
-  var RAW = { costoMensual: [], facturas: [], remitosVentas: [], facturasVentas: [], ingresosEstimados: [] };
+  var RAW = { costoMensual: [], facturas: [], remitosVentas: [], facturasVentas: [], ingresosEstimados: [], logros: { bloques: [], actualizado: null } };
   var anioOperativo = null; // último año con datos de nómina reales (costo_mensual) — no editable por el usuario
   // state.mes es el único filtro de Mes para toda la hoja Sueldos (Resumen
   // General, Costos Totales y Horas y Adicionales) — antes cada sección tenía
@@ -1856,15 +2131,6 @@
   var state = { categoria: 'Todas', anioAltasBajas: null, mes: null, horasQuincena: 'todas', busqueda: '', precioGrupos: { basico: true, bruto: true } };
 
   var anioOperativoCompras = null; // último año con facturas cargadas
-  var FILTROS_FACTURA_CAMPOS = [
-    { campo: 'categoria', selectId: 'filtroCatFactura' },
-    { campo: 'categoriaMacro', selectId: 'filtroCatMacroFactura' },
-    { campo: 'tipoItem', selectId: 'filtroTipoItemFactura' },
-    { campo: 'imputacionGestion', selectId: 'filtroImputacionFactura' },
-    { campo: 'flujoFondos', selectId: 'filtroFlujoFactura' },
-    { campo: 'comportamientoCosto', selectId: 'filtroComportamientoFactura' },
-    { campo: 'area', selectId: 'filtroAreaFactura' }
-  ];
   var DESGLOSE_FACTURA_CAMPOS = [
     { campo: 'categoria', label: 'Categoría' },
     { campo: 'categoriaMacro', label: 'Categoría Macro' },
@@ -1875,15 +2141,36 @@
     { campo: 'comportamientoCosto', label: 'Comportamiento del Costo' },
     { campo: 'area', label: 'Área' }
   ];
+  // Subcategorías de factura agrupadas bajo "Mantenimiento y Reparaciones"
+  // (2026-10, a pedido de Rocío) — comparación con normalizarEncabezado para
+  // no depender de que mayúsculas/tildes/espacios coincidan exacto con la
+  // hoja. Confirmado con ella cuáles de las subcategorías reales de
+  // REGISTRO DE FACTURAS entran acá; quedaron afuera a propósito FERRETERÍA,
+  // OTROS INSUMOS INDIRECTOS y EQUIPOS DE MANTENIMIENTO (este último vive en
+  // Bienes de Uso, no en gastos operativos de mantenimiento). Es un
+  // agrupamiento propio de esta vista — no toca las categorías originales.
+  // IMPORTANTE (bug encontrado 2026-10): el valor real de la celda en la
+  // hoja incluye el código delante (ej. "D2 - REPARACIONES / SERVICIO
+  // TÉCNICO", no solo "REPARACIONES / SERVICIO TÉCNICO" — confirmado por
+  // Rocío con un ejemplo real de su fila 2). Sin el código el filtro nunca
+  // matcheaba nada y el gráfico quedaba vacío. Los códigos van acá tal cual
+  // los confirmó ella.
+  var SUBCATEGORIAS_MANTENIMIENTO = [
+    'D1 - REPUESTOS',
+    'D2 - REPARACIONES / SERVICIO TÉCNICO',
+    'C4 - HERRAMIENTAS Y COMPONENTES MENORES',
+    'C2 - MATERIAL ELÉCTRICO',
+    'E2 - HONORARIOS TÉCNICOS'
+  ].map(normalizarEncabezado);
   var stateCompras = {
-    // Único filtro de Mes para toda la hoja Compras (Resumen General, torta de
-    // Distribución de Facturación y Facturación por Mes) — mismo criterio que
-    // el filtro único de Sueldos (state.mes). Los 7 filtros de abajo (filtros)
-    // son independientes y se combinan con éste.
+    // Único filtro de Mes para toda la hoja Compras (Resumen General,
+    // Distribución de las Compras y Compras por Mes) — mismo criterio que el
+    // filtro único de Sueldos (state.mes). Los 7 filtros propios que tenía
+    // "Facturación por Mes" se quitaron (2026-10): ver nota en
+    // facturasPreFiltradas.
     mes: null,
-    filtros: { categoria: 'Todas', categoriaMacro: 'Todas', tipoItem: 'Todas', imputacionGestion: 'Todas', flujoFondos: 'Todas', comportamientoCosto: 'Todas', area: 'Todas' },
     desglosePor: 'categoriaMacro',
-    valoresDesglose: {}, // {valor: boolean} — se reconstruye cada vez que cambia el "universo" (año/pre-filtros/variable)
+    valoresDesglose: {}, // {valor: boolean} — se reconstruye cada vez que cambia el "universo" (año/variable de desglose)
     desgloseInfo: null   // {orden, colores, otrosSet, totales} — ranking y colores estables mientras no cambie el universo
   };
 
@@ -1928,16 +2215,32 @@
   // ordinal dentro de un set de 7 categorías rompe el piso de croma y el
   // chequeo de separación por daltonismo (falla confirmada con el validador
   // del skill de dataviz al probarlo) — la elección correcta acá es un color
-  // por identidad, no un gradiente. Reutiliza 6 tonos ya validados en este
-  // mismo tablero para pares adyacentes (los primeros 6 de PALETA_FACTURAS_EXT,
-  // en el mismo orden — navy/teal/blue/blueLight/slate/sage), más el gris
-  // neutro ya establecido para "Otros".
+  // por identidad, no un gradiente.
+  //
+  // Corrección (2026-10): la primera versión reutilizaba los primeros 6 tonos
+  // de PALETA_FACTURAS_EXT en orden (navy/teal/blue/blueLight/slate/sage), sin
+  // volver a chequear "todos contra todos" — y "blue" (Baja Tensión) es casi
+  // el mismo tono que "navy" (Alta Tensión, ver nota de PALETA_TORTA más abajo:
+  // "blue" es casi el mismo tono que "navy"), Rocío lo vio en la práctica
+  // ("se parece mucho"). Mismo problema de fondo señalado: con el verde-azul
+  // de la marca solo hay 3-4 tonos realmente distinguibles entre sí (navy/
+  // teal/olive, confirmado por fuerza bruta en la paleta de tortas), así que
+  // para 7 categorías simultáneas no alcanza el color solo — folder plano por
+  // eso reservamos el olive (que ya pasa el chequeo estricto contra navy+teal)
+  // para Baja Tensión en vez de "blue", y repartimos el resto priorizando
+  // variedad de matiz en vez de amontonar azules/cian: navy, teal, olive,
+  // sage, slate, pine. Sigue habiendo un par con matiz parecido (Crucetas/
+  // Vínculos, sage/pine, ambos verdes) — es el límite real de la paleta de
+  // marca con 7 categorías a la vez — pero ya no son casi-idénticos (antes
+  // ΔE~1, ahora ΔE~22 entre todo el resto de pares) y las 3 formas de
+  // identificación directa ya presentes (leyenda, etiqueta de categoría en
+  // cada barra, tooltip) cubren ese par restante sin depender solo del color.
   var COLOR_POSTES_ALTA = '#007295';
   var COLOR_POSTES_MEDIA = '#1cb9cd';
-  var COLOR_POSTES_BAJA = '#007399';
-  var COLOR_CRUCETAS = '#37b7c8';
+  var COLOR_POSTES_BAJA = '#30752a';
+  var COLOR_CRUCETAS = '#73b87d';
   var COLOR_MENSULAS = '#006ca2';
-  var COLOR_VINCULOS = '#73b87d';
+  var COLOR_VINCULOS = '#5cba90';
   // Otros usa COLOR_OTROS_FACTURAS (definido arriba).
 
   // Rampas ordinales (un solo tono, claro→oscuro) para el desglose interno de
@@ -1949,10 +2252,11 @@
   // categorías de arriba, para que seguir siendo "la familia Crucetas" se
   // note aunque el matiz exacto varíe. Validadas con validateOrdinal(): las
   // 3 pasan Lightness monotone, ΔL >= 0.06, contraste del escalón más claro
-  // >= 2:1 y un solo hue.
-  var RAMPA_CRUCETAS = ['#37b7c9', '#0094a9', '#006b80']; // Simple, Doble, Triple
+  // >= 2:1 y un solo hue. Actualizadas junto con COLOR_CRUCETAS/COLOR_VINCULOS
+  // (2026-10) para seguir partiendo del mismo tono que su color de categoría.
+  var RAMPA_CRUCETAS = ['#8ecc97', '#51b860', '#30883d']; // Simple, Doble, Triple
   var RAMPA_MENSULAS = ['#4c9acf', '#005e99'];             // Simple, Doble
-  var RAMPA_VINCULOS = ['#73b87d', '#1d7634'];             // Doble, Triple
+  var RAMPA_VINCULOS = ['#60be94', '#308860'];             // Doble, Triple
 
   // Paleta para los gráficos de torta (Distribución de Facturación). Los gráficos
   // de torta son una forma "todos-contra-todos" (dos porciones cualquiera pueden
@@ -2118,8 +2422,9 @@
     // Facturación por Mes, y las tortas fijas al año completo). Por defecto
     // muestra el último mes con facturas cargadas; "Todos" muestra el año
     // completo. Controla Resumen General, los 4 gráficos de torta de
-    // Distribución de Facturación y el gráfico de Facturación por Mes (este
-    // último combinado además con sus 7 filtros propios, que siguen aparte).
+    // Distribución de las Compras y el gráfico de Compras por Mes (este
+    // último además combinado con "Desglosar por" — los 7 filtros propios
+    // que tenía antes se quitaron, ver nota en facturasPreFiltradas).
     var selMesCompras = document.getElementById('filtroMesCompras');
     MESES_DISPLAY.forEach(function (m, i) {
       var o = document.createElement('option'); o.value = i; o.textContent = m; selMesCompras.appendChild(o);
@@ -2140,24 +2445,6 @@
       stateCompras.mes = 'todos'; selMesCompras.value = 'todos';
       actualizarPeriodoSeleccionadoCompras();
       renderComprasAll();
-    });
-
-    FILTROS_FACTURA_CAMPOS.forEach(function (f) {
-      var sel = document.getElementById(f.selectId);
-      var optTodas = document.createElement('option'); optTodas.value = 'Todas'; optTodas.textContent = 'Todas'; sel.appendChild(optTodas);
-      valoresUnicosFacturas(f.campo).forEach(function (v) {
-        var o = document.createElement('option'); o.value = v; o.textContent = tituloDesdeMayusculas(v); sel.appendChild(o);
-      });
-      sel.value = 'Todas';
-      sel.addEventListener('change', function () { stateCompras.filtros[f.campo] = sel.value; actualizarDesgloseFacturas(); });
-    });
-
-    document.getElementById('btnLimpiarFiltrosFacturas').addEventListener('click', function () {
-      FILTROS_FACTURA_CAMPOS.forEach(function (f) {
-        stateCompras.filtros[f.campo] = 'Todas';
-        document.getElementById(f.selectId).value = 'Todas';
-      });
-      actualizarDesgloseFacturas();
     });
 
     var selDesglose = document.getElementById('filtroDesgloseFactura');
@@ -2190,6 +2477,7 @@
     });
     renderKpisCostos();
     renderComposicionCosto();
+    renderCostoPromedioDiarioMensual();
     renderCostoPorMes();
 
     wireTableToggle();
@@ -2234,6 +2522,76 @@
     console.error(err);
     renderVentasConexion(false, err.message);
   });
+
+  // --- Módulo Logros: pedido APARTE, mismo criterio que Ventas ---
+  // Fuente nueva (Google Doc vía Apps Script, no un Sheet) — si falla, no
+  // debe tirar abajo el resto del tablero, igual que Ventas.
+  fetchRecurso('contenido', 'logros', null, {
+    onReintentar: function (msg) {
+      var elMsg = document.getElementById('logrosConexionMsg');
+      if (elMsg) { elMsg.textContent = msg; elMsg.style.display = ''; elMsg.style.color = ''; }
+    }
+  }).then(function (data) {
+    RAW.logros = data || { bloques: [], actualizado: null };
+    renderLogrosConexion(true);
+    renderLogros();
+    document.getElementById('footerTimestampLogros').textContent = new Date().toLocaleString('es-AR');
+  }).catch(function (err) {
+    console.error(err);
+    renderLogrosConexion(false, err.message);
+  });
+
+  function renderLogrosConexion(ok, errMsg) {
+    var msgEl = document.getElementById('logrosConexionMsg');
+    if (!ok) {
+      if (msgEl) { msgEl.textContent = 'No se pudo conectar con el documento de Logros: ' + errMsg; msgEl.style.color = 'var(--status-critical)'; msgEl.style.display = ''; }
+      return;
+    }
+    if (msgEl) { msgEl.style.display = 'none'; msgEl.textContent = ''; msgEl.style.color = ''; }
+  }
+
+  // Pinta los bloques que devuelve Code.gs (getLogrosContenido) con el estilo
+  // propio del tablero (ver CSS .logros-*) en vez de incrustar el Doc tal
+  // cual — ítems de lista consecutivos se agrupan en un mismo <ul>.
+  function renderLogros() {
+    var contenidoEl = document.getElementById('logrosContenido');
+    if (!contenidoEl) return;
+    contenidoEl.innerHTML = '';
+    var bloques = (RAW.logros && RAW.logros.bloques) || [];
+    if (!bloques.length) {
+      var vacio = document.createElement('p');
+      vacio.className = 'logros-vacio';
+      vacio.textContent = 'El documento todavía no tiene contenido para mostrar.';
+      contenidoEl.appendChild(vacio);
+      return;
+    }
+    var listaActual = null; // agrupa LIST_ITEM consecutivos en un mismo <ul>
+    bloques.forEach(function (b) {
+      if (b.tipo === 'item_lista') {
+        if (!listaActual) {
+          listaActual = document.createElement('ul');
+          listaActual.className = 'logros-list';
+          contenidoEl.appendChild(listaActual);
+        }
+        var li = document.createElement('li');
+        li.textContent = b.texto;
+        listaActual.appendChild(li);
+        return;
+      }
+      listaActual = null; // un bloque de otro tipo corta la agrupación de lista
+      var nodo;
+      if (b.tipo === 'titulo1') { nodo = document.createElement('div'); nodo.className = 'logros-h1'; }
+      else if (b.tipo === 'titulo2') { nodo = document.createElement('div'); nodo.className = 'logros-h2'; }
+      else if (b.tipo === 'titulo3') { nodo = document.createElement('div'); nodo.className = 'logros-h3'; }
+      else {
+        nodo = document.createElement('p');
+        nodo.className = 'logros-p';
+        if (b.negrita) nodo.style.fontWeight = '700';
+      }
+      nodo.textContent = b.texto;
+      contenidoEl.appendChild(nodo);
+    });
+  }
 
   function normalizarEvolucionDotacion(arr) {
     return (arr || []).map(function (r) {
@@ -2434,36 +2792,43 @@
     }).filter(function (r) { return r.producto; });
   }
 
+  // Reescrito 2026-10 — Rocío movió la hoja de facturación a otro archivo
+  // ("Seguimiento de Clientes") y de paso cambió el esquema de columnas (no
+  // es solo un rename: "SUBTOTAL C/ IVA", "ANTICIPO" y "NOTA DE CREDITO" ya
+  // no existen como columnas propias — un anticipo o una nota de crédito
+  // ahora son su propia fila, con TIPO = "Factura A/B" o "NC A"). Los montos
+  // llegan como texto con "$" (ej. "$8264462.98"), por eso se usa numMonto()
+  // y no num() (que con un string como ese daría 0). OJO: de los campos que
+  // arma esta función, "Resumen General" de Ventas (renderKpisResumenVentas)
+  // solo usa nFactura/fechaFactura/anio/mesIdx — subtotal/iva/total/tipo/
+  // producto/obra/cliente/remitoAsociado quedan disponibles para el día que
+  // hagan falta (ningún otro gráfico los lee todavía).
   function normalizarFacturasVentas(arr) {
     return (arr || []).map(function (r) {
-      var fechaFactura = r['FECHA FACTURA'] ? new Date(r['FECHA FACTURA']) : null;
+      var fechaFactura = r['FECHA DE EMISIÓN'] ? new Date(r['FECHA DE EMISIÓN']) : null;
       var validaFactura = fechaFactura instanceof Date && !isNaN(fechaFactura.getTime());
-      var fechaRemito = r['FECHA REMITO'] ? new Date(r['FECHA REMITO']) : null;
-      var validaRemito = fechaRemito instanceof Date && !isNaN(fechaRemito.getTime());
       return {
-        nFactura: trimStr(r['N° FACTURA']),
-        fechaRemito: validaRemito ? fechaRemito : null,
+        nFactura: trimStr(r['NRO COMPROBANTE']),
         fechaFactura: validaFactura ? fechaFactura : null,
         anio: validaFactura ? fechaFactura.getFullYear() : null,
         mesIdx: validaFactura ? fechaFactura.getMonth() : null,
+        // "Factura A"/"Factura B"/"NC A" (nota de crédito) — distingue el
+        // tipo de comprobante; una Nota de Crédito también cuenta hoy para
+        // "Facturas Cargadas" (es un comprobante más de la hoja). Si Rocío
+        // prefiere excluir las NC de ese conteo, se filtra acá por tipo.
+        tipo: trimStr(r['TIPO']),
         obra: trimStr(r['OBRA']),
         cliente: trimStr(r['CLIENTE']),
-        // Texto concatenado ("PO 8,5 R 3000; PO 10 R 3900") cuando la factura
-        // junta remitos de productos distintos — no sirve para desglose por
-        // producto, solo para mostrar/debug. Para desglose usar Remitos.
-        producto: trimStr(r['PRODUCTO']),
-        subtotal: num(r['SUBTOTAL']),
-        iva: num(r['IVA']),
-        subtotalConIva: num(r['SUBTOTAL C/ IVA']),
-        anticipo: num(r['ANTICIPO']),
-        // Ojo: el encabezado real en el Sheet es "NOTA DE CREDITO", sin tilde
-        // (a diferencia de como se suele escribir) — hay que leerlo tal cual.
-        notaCredito: num(r['NOTA DE CREDITO']),
-        total: num(r['TOTAL']),
-        observacion: trimStr(r['OBSERVACIÓN'])
+        remitoAsociado: trimStr(r['REMITO ASOCIADO']),
+        // Texto libre (antes era la concatenación de productos de la
+        // factura) — no sirve para desglose por producto, solo para
+        // mostrar/debug. Para desglose usar Remitos.
+        producto: trimStr(r['DESCRIPCIÓN']),
+        subtotal: numMonto(r['SUBTOTAL SIN IVA']),
+        iva: numMonto(r['IVA']),
+        total: numMonto(r['TOTAL'])
       };
-    // Descarta las filas plantilla sin usar (fórmulas que dan $0,00 pero
-    // todavía no tienen N° Factura cargado).
+    // Descarta las filas plantilla sin usar (sin Nro. de Comprobante cargado).
     }).filter(function (f) { return f.nFactura; });
   }
 
@@ -2535,18 +2900,19 @@
     if (msgEl) { msgEl.style.display = 'none'; msgEl.textContent = ''; msgEl.style.color = ''; }
   }
 
-  // KPI de "Resumen General" de Ventas — a diferencia de antes (mostraban
-  // siempre el total global de todo lo cargado), ahora responden al filtro de
-  // Año/Meses de arriba, igual que el resto de las hojas. "Último Remito
-  // Cargado" y "Última Factura Cargada" quedan afuera del filtro a propósito:
-  // son un chequeo de que la conexión está al día, no un KPI del período
-  // elegido, así que siempre muestran la fecha más reciente de TODO lo
-  // cargado.
+  // KPI de "Resumen General" de Ventas (2026-10, simplificado a pedido de
+  // Rocío): se sacaron "Último Remito Cargado", "Última Factura Cargada" y
+  // "Remitos Vinculados a Factura" — quedan los 4 indicadores que sí aportan
+  // información del período (Remitos/Facturas Cargadas, Monto Valorizado de
+  // Remitos, Facturación Total), más "Ingresos Proyectados" como 5ta tarjeta
+  // opcional (el grid de .kpi-row es auto-fit, así que 5 tarjetas no rompen
+  // el diseño). Todos responden al filtro de Año/Meses de arriba.
   function renderKpisResumenVentas() {
     var wrap = document.getElementById('kpiRowVentasConexion');
     if (!wrap) return;
     var remitosTodos = RAW.remitosVentas || [];
     var facturasTodas = RAW.facturasVentas || [];
+    var ingresosTodos = RAW.ingresosEstimados || [];
     var anio = stateVentas.anio;
     var mesesSel = stateVentas.meses; // null = todos
 
@@ -2557,22 +2923,26 @@
     }
     var remitos = remitosTodos.filter(function (r) { return enPeriodo(r.anio, r.mesIdx); });
     var facturas = facturasTodas.filter(function (f) { return enPeriodo(f.anio, f.mesIdx); });
-    var remitosVinculados = remitos.filter(function (r) { return r.nFactura; }).length;
+    var ingresos = ingresosTodos.filter(function (r) { return enPeriodo(r.anio, r.mesIdx); });
 
-    var fechasRemitos = remitosTodos.map(function (r) { return r.fecha; }).filter(Boolean);
-    var ultimoRemito = fechasRemitos.length ? new Date(Math.max.apply(null, fechasRemitos)) : null;
-    var fechasFacturas = facturasTodas.map(function (f) { return f.fechaFactura; }).filter(Boolean);
-    var ultimaFactura = fechasFacturas.length ? new Date(Math.max.apply(null, fechasFacturas)) : null;
+    // Monto Total Valorizado de Remitos: Cantidad despachada × Precio
+    // Estimado de cada remito, sumado sobre el período elegido — misma
+    // fórmula que ya usa ingresosRemitosMes() para Margen Bruto, acá
+    // aplicada al período de Ventas en vez de mes a mes.
+    var montoValorizado = remitos.reduce(function (s, r) { return s + r.cantidad * r.precioEstimado; }, 0);
+    var facturacionTotal = facturas.reduce(function (s, f) { return s + f.total; }, 0);
+    var ingresosProyectadosTotal = ingresos.reduce(function (s, r) { return s + r.ingresosProyectados; }, 0);
 
     var tiles = [
       { label: 'Remitos Cargados', value: formatNum(remitos.length), sub: 'Total de remitos registrados en el período seleccionado' },
-      { label: 'Facturas Cargadas', value: formatNum(facturas.length), sub: 'Total de facturas de venta registradas en el período seleccionado' },
+      { label: 'Facturas Cargadas', value: formatNum(facturas.length), sub: 'Total de facturas registradas en el período seleccionado' },
       {
-        label: 'Remitos Vinculados a Factura', value: formatNum(remitosVinculados),
-        sub: remitos.length ? (remitosVinculados + ' de ' + remitos.length + ' remitos ya cuentan con una factura asociada') : '—'
+        label: 'Monto Total Valorizado de Remitos', value: formatMoney(montoValorizado),
+        info: 'Cantidad despachada × Precio Estimado del producto. Es una valorización teórica de los despachos, no necesariamente un monto efectivamente facturado.',
+        sub: 'Valorización estimada del período seleccionado'
       },
-      { label: 'Último Remito Cargado', value: ultimoRemito ? ultimoRemito.toLocaleDateString('es-AR') : '—', sub: 'Fecha del remito más reciente' },
-      { label: 'Última Factura Cargada', value: ultimaFactura ? ultimaFactura.toLocaleDateString('es-AR') : '—', sub: 'Fecha de factura más reciente' }
+      { label: 'Facturación Total', value: formatMoney(facturacionTotal), sub: 'Total facturado (Seguimiento de Clientes) en el período seleccionado' },
+      { label: 'Ingresos Proyectados', value: formatMoney(ingresosProyectadosTotal), sub: 'Cobros proyectados (Seguimiento de Clientes) en el período seleccionado' }
     ];
     wrap.innerHTML = '';
     tiles.forEach(function (t) { wrap.appendChild(kpiTileEl(t)); });
@@ -2658,6 +3028,35 @@
     }
   };
 
+  // Dado un conjunto de índices de mes (0-11) con datos, devuelve el rango
+  // CONTIGUO desde el primero hasta el último con datos (ej. [4,5,6,7,8] si
+  // los despachos arrancaron en Mayo) — a pedido de Rocío (2026-10), para que
+  // los gráficos de evolución de Ventas no muestren meses vacíos de un año
+  // que recién empezó a cargarse a mitad de camino. Si no hay NINGÚN mes con
+  // datos, devuelve los 12 meses completos (el gráfico de todas formas va a
+  // mostrar su emptyState normal).
+  function rangoMesesConDatos(mesesConValor) {
+    if (!mesesConValor || !mesesConValor.length) return MESES_CORTO.map(function (_, i) { return i; });
+    var min = Math.min.apply(null, mesesConValor);
+    var max = Math.max.apply(null, mesesConValor);
+    var out = [];
+    for (var m = min; m <= max; m++) out.push(m);
+    return out;
+  }
+
+  // Texto corto de período ("Año completo 2026" / "Agosto 2026" / "3 meses de
+  // 2026"), para mostrar de forma visible en los gráficos de Despacho de
+  // Mercadería a qué período corresponden — antes solo se veía arriba, en la
+  // barra de filtros, y no quedaba claro mirando el gráfico solo.
+  function textoPeriodoVentas() {
+    var anio = stateVentas.anio;
+    var meses = stateVentas.meses;
+    if (anio == null) return '—';
+    if (!meses) return 'Año completo ' + anio;
+    if (meses.length === 1) return MESES_DISPLAY[meses[0]] + ' ' + anio;
+    return meses.length + ' meses de ' + anio;
+  }
+
   // Años con remitos cargados, para el <select> de Año.
   function coleccionAniosVentas() {
     var set = {};
@@ -2711,6 +3110,20 @@
       });
     });
 
+    // Mostrar/Ocultar el gráfico de "Evolución Mensual de Unidades
+    // Despachadas" completo (caption + tabs de familia + gráfico + tabla) —
+    // a pedido de Rocío, para poder dejar el tablero más limpio si no lo está
+    // usando en el momento. Arranca visible (mismo comportamiento que antes).
+    var btnToggleEvolucion = document.getElementById('toggleEvolucionVentas');
+    var bodyEvolucion = document.getElementById('evolucionVentasBody');
+    if (btnToggleEvolucion && bodyEvolucion) {
+      btnToggleEvolucion.addEventListener('click', function () {
+        var ocultar = bodyEvolucion.style.display !== 'none';
+        bodyEvolucion.style.display = ocultar ? 'none' : '';
+        btnToggleEvolucion.textContent = ocultar ? 'Mostrar gráfico' : 'Ocultar gráfico';
+      });
+    }
+
     var btnLimpiarVentas = document.getElementById('btnLimpiarFiltrosVentas');
     if (btnLimpiarVentas) {
       btnLimpiarVentas.addEventListener('click', function () {
@@ -2724,12 +3137,16 @@
     }
   }
 
-  // Vuelve a dibujar todo lo que depende del filtro de Año/Meses de Ventas
-  // (los dos gráficos de la sección "Análisis de Productos Vendidos").
+  // Vuelve a dibujar todo lo que depende del filtro de Año/Meses de Ventas:
+  // KPIs de Resumen General, los 4 gráficos de "Despacho de Mercadería"
+  // (unidades + valorización) y el de "Ingresos y Facturación".
   function renderVentasFiltrado() {
     renderKpisResumenVentas();
     renderAnalisisProductosVentas();
     renderEvolucionVentas();
+    renderValorizacionCategoriaVentas();
+    renderEvolucionValorizacionVentas();
+    renderIngresosFacturacionVentas();
   }
 
   // Dibuja los chips de mes (multi-selección) para el año elegido y engancha
@@ -2772,6 +3189,11 @@
   function renderAnalisisProductosVentas() {
     var contenedor = document.getElementById('chartProductosVentas');
     if (!contenedor) return; // todavía no se cargaron los datos de Ventas
+    // Período visible dentro del propio gráfico (2026-10, a pedido de
+    // Rocío): antes solo se veía arriba, en la barra de filtros, y no quedaba
+    // claro si el gráfico mostraba el acumulado del año o un mes puntual.
+    var periodoEl = document.getElementById('periodoUnidadesDespachadas');
+    if (periodoEl) periodoEl.textContent = 'Período: ' + textoPeriodoVentas();
     var anio = stateVentas.anio;
     var meses = stateVentas.meses; // null = todos
     var delPeriodo = (RAW.remitosVentas || []).filter(function (r) {
@@ -2796,6 +3218,138 @@
       items.map(function (it) { return [it.label, formatNum(it.value)]; }));
   }
 
+  // Monto Valorizado por Categoría (2026-10, nuevo): misma lógica y mismo
+  // filtro de Año/Meses que "Unidades Despachadas por Categoría" de arriba,
+  // pero en pesos (Cantidad × Precio Estimado) en vez de unidades.
+  function renderValorizacionCategoriaVentas() {
+    var contenedor = document.getElementById('chartValorizacionCategoria');
+    if (!contenedor) return;
+    var periodoEl = document.getElementById('periodoValorizacionCategoria');
+    if (periodoEl) periodoEl.textContent = 'Período: ' + textoPeriodoVentas();
+    var anio = stateVentas.anio;
+    var meses = stateVentas.meses; // null = todos
+    var delPeriodo = (RAW.remitosVentas || []).filter(function (r) {
+      if (r.anio !== anio) return false;
+      if (meses && meses.indexOf(r.mesIdx) === -1) return false;
+      return true;
+    });
+
+    var totalesPorCategoria = {};
+    CATEGORIAS_PRODUCTOS_VENTAS.forEach(function (c) { totalesPorCategoria[c] = 0; });
+    delPeriodo.forEach(function (r) {
+      var cat = categorizarProductoVentas(r.descripcion);
+      totalesPorCategoria[cat] = (totalesPorCategoria[cat] || 0) + r.cantidad * r.precioEstimado;
+    });
+
+    var items = CATEGORIAS_PRODUCTOS_VENTAS.map(function (cat) {
+      return { label: cat, value: totalesPorCategoria[cat], color: colorCategoriaProductoVentas(cat) };
+    }).filter(function (it) { return it.value > 0; });
+
+    renderHorizontalBar(contenedor, items, { valueFormatter: formatCompact, valueLabel: 'Monto valorizado', rowHeight: 46, barThickness: 0.7, leftMargin: 190 });
+    renderSimpleTable(document.getElementById('chartValorizacionCategoria-table'), ['Categoría', 'Monto Valorizado'],
+      items.map(function (it) { return [it.label, formatMoney(it.value)]; }));
+  }
+
+  // Evolución Mensual del Monto Valorizado de los Despachos (2026-10, nuevo):
+  // a diferencia de "Evolución Mensual de Unidades Despachadas" (que usa tabs
+  // de familia porque Postes/Crucetas/etc. tienen subcategorías propias con
+  // sentido de orden - Simple/Doble/Triple, niveles de tensión), acá se
+  // muestran las 7 categorías de una sola vez apiladas por mes (mismo patrón
+  // que "Costo por Mes"/"Compras por Mes") — alcanza para ver cuánto
+  // representa cada categoría mes a mes sin duplicar la UI de tabs en pesos.
+  // Recorta el eje al rango con despachos (ver rangoMesesConDatos), igual
+  // que la de unidades.
+  function renderEvolucionValorizacionVentas() {
+    var contenedor = document.getElementById('chartEvolucionValorizacion');
+    if (!contenedor) return;
+    var anio = stateVentas.anio;
+    var delAnio = (RAW.remitosVentas || []).filter(function (r) { return r.anio === anio; });
+    if (!delAnio.length) return emptyState(contenedor);
+
+    var totalesPorMes = {}; // mesIdx -> { categoria: monto }
+    delAnio.forEach(function (r) {
+      var cat = categorizarProductoVentas(r.descripcion);
+      if (!totalesPorMes[r.mesIdx]) totalesPorMes[r.mesIdx] = {};
+      totalesPorMes[r.mesIdx][cat] = (totalesPorMes[r.mesIdx][cat] || 0) + r.cantidad * r.precioEstimado;
+    });
+
+    var meses = rangoMesesConDatos(Object.keys(totalesPorMes).map(Number));
+    var cats = meses.map(function (m) { return MESES_CORTO[m]; });
+    var series = CATEGORIAS_PRODUCTOS_VENTAS.map(function (cat) {
+      return {
+        name: cat, color: colorCategoriaProductoVentas(cat),
+        values: meses.map(function (m) { return (totalesPorMes[m] && totalesPorMes[m][cat]) || 0; })
+      };
+    }).filter(function (s) { return s.values.some(function (v) { return v > 0; }); });
+
+    renderBarChart(contenedor, cats, series, {
+      stacked: true, stackTotals: true, totalBadge: true,
+      valueFormatter: formatCompact, tooltipFormatter: formatMoney
+    });
+
+    var cols = ['Mes'].concat(series.map(function (s) { return s.name; })).concat(['Total']);
+    var trows = meses.map(function (m, i) {
+      var row = [cats[i]].concat(series.map(function (s) { return formatMoney(s.values[i]); }));
+      var total = series.reduce(function (acc, s) { return acc + s.values[i]; }, 0);
+      row.push(formatMoney(total));
+      return row;
+    });
+    renderSimpleTable(document.getElementById('chartEvolucionValorizacion-table'), cols, trows);
+  }
+
+  // Facturación registrada de un mes: suma de "TOTAL" de FACTURAS
+  // (Seguimiento de Clientes) cuya Fecha de Emisión cae en ese mes — mismo
+  // criterio de agrupación que ingresosEstimadosMes() de abajo.
+  function facturacionMes(anio, mesIdx) {
+    var total = 0;
+    (RAW.facturasVentas || []).forEach(function (f) { if (f.anio === anio && f.mesIdx === mesIdx) total += f.total; });
+    return total;
+  }
+
+  // Ingresos y Facturación (2026-10, nuevo): compara, mes a mes, la
+  // Facturación Registrada (FACTURAS) contra los Ingresos Proyectados
+  // (INGRESOS PROYECTADOS) — ambas hojas de Seguimiento de Clientes. Usa
+  // renderLineChart (línea sólida = real, punteada = proyectado), mismo
+  // criterio visual que "Costo Real por Hora" (Sueldos). Muestra el año
+  // elegido en el filtro de arriba completo (no se recorta por el filtro de
+  // Meses, que en Ventas es multi-selección y pensado para los gráficos de
+  // despacho — acá el objetivo es la tendencia del año completo).
+  function renderIngresosFacturacionVentas() {
+    var contenedor = document.getElementById('chartIngresosFacturacionVentas');
+    if (!contenedor) return;
+    var anio = stateVentas.anio;
+    if (anio == null) return emptyState(contenedor);
+
+    var mesesSet = {};
+    (RAW.facturasVentas || []).forEach(function (f) { if (f.anio === anio) mesesSet[f.mesIdx] = true; });
+    (RAW.ingresosEstimados || []).forEach(function (r) { if (r.anio === anio) mesesSet[r.mesIdx] = true; });
+    if (!Object.keys(mesesSet).length) return emptyState(contenedor);
+
+    var meses = rangoMesesConDatos(Object.keys(mesesSet).map(Number));
+    var cats = meses.map(function (m) { return MESES_CORTO[m]; });
+    var facturacion = meses.map(function (m) { return facturacionMes(anio, m); });
+    var proyectados = meses.map(function (m) { return ingresosEstimadosMes(anio, m); });
+
+    // Colores (2026-10): antes Navy+Teal (PALETA_TORTA[0]/[1]) — dos azules
+    // con poco contraste entre sí, costaba distinguir las líneas a simple
+    // vista (pedido de Rocío). Navy+Olive es el mismo par ya validado contra
+    // daltonismo que usa PALETA_TORTA para sus primeros 2 tonos + el 3°
+    // (ver comentario de PALETA_TORTA más arriba), con mucho más contraste.
+    var series = [
+      { name: 'Facturación Registrada', color: PALETA_TORTA[0], values: facturacion, zeroLabel: 'Sin facturación registrada' },
+      { name: 'Ingresos Proyectados', color: COLOR_SUELDOS_COSTOS, dash: true, values: proyectados }
+    ];
+    renderLineChart(contenedor, cats, series, {
+      valueFormatter: formatCompact, tightMargins: true, showDiff: true, diffLabel: 'Diferencia'
+    });
+
+    var trows = meses.map(function (m, i) {
+      return [cats[i], formatMoney(facturacion[i]), formatMoney(proyectados[i]), formatMoney(facturacion[i] - proyectados[i])];
+    });
+    renderSimpleTable(document.getElementById('chartIngresosFacturacionVentas-table'),
+      ['Mes', 'Facturación Registrada', 'Ingresos Proyectados', 'Diferencia'], trows);
+  }
+
   // Evolución mensual de la familia elegida (Postes/Crucetas/Ménsulas/
   // Vínculos/Otros): columnas apiladas por mes — si la familia tiene
   // subcategorías (Postes por Tensión, o el tipo Simple/Doble/Triple de
@@ -2810,17 +3364,29 @@
     var mesesSeleccionados = stateVentas.meses; // null = todos
     var familia = FAMILIAS_EVOLUCION_VENTAS[stateVentas.familiaEvolucion] || FAMILIAS_EVOLUCION_VENTAS.postes;
 
-    // Igual que en el resto de las hojas: el filtro de Meses no recorta este
+    // Igual que en el resto de las hojas, el filtro de Meses no recorta este
     // gráfico de tendencia (con una sola columna se pierde el sentido de
-    // evolución) — siempre muestra los 12 meses del año y en cambio resalta
-    // los meses elegidos, atenuando el resto (ver emphasisIndex en
-    // renderBarChart, que acá recibe un array porque Ventas permite elegir
-    // varios meses a la vez, a diferencia del Mes único de las otras hojas).
-    var meses = MESES_CORTO.map(function (_, i) { return i; });
+    // evolución): en cambio resalta los meses elegidos, atenuando el resto
+    // (ver emphasisIndex en renderBarChart, que acá recibe un array porque
+    // Ventas permite elegir varios meses a la vez, a diferencia del Mes
+    // único de las otras hojas). Lo que sí se recorta es el rango de meses
+    // mostrados: si esta familia no tiene datos representativos en los
+    // primeros meses del año, el gráfico arranca desde el primer mes con
+    // información en lugar de mostrar meses vacíos (rangoMesesConDatos).
     var delFamilia = (RAW.remitosVentas || []).filter(function (r) {
       if (r.anio !== anio) return false;
       return familia.filtro(categorizarProductoVentas(r.descripcion));
     });
+    var meses = rangoMesesConDatos(delFamilia.map(function (r) { return r.mesIdx; }));
+    if (!meses.length) return emptyState(contenedor);
+
+    // mesesSeleccionados llega con índices absolutos de mes (0-11); hay que
+    // remapearlos a la posición dentro del array `meses` ya recortado antes
+    // de pasarlos como emphasisIndex, porque renderBarChart lo interpreta
+    // por posición, no por valor absoluto.
+    var emphasisRecortado = mesesSeleccionados == null ? null : mesesSeleccionados
+      .map(function (m) { return meses.indexOf(m); })
+      .filter(function (i) { return i !== -1; });
 
     var cats = meses.map(function (m) { return MESES_CORTO[m]; });
     var series;
@@ -2845,7 +3411,7 @@
 
     renderBarChart(contenedor, cats, series, {
       stacked: true, valueFormatter: formatNum, tooltipFormatter: formatNum,
-      emphasisIndex: mesesSeleccionados
+      emphasisIndex: emphasisRecortado
     });
 
     var cols = ['Mes'].concat(series.map(function (s) { return s.name; })).concat(series.length > 1 ? ['Total'] : []);
@@ -2858,15 +3424,6 @@
       return row;
     });
     renderSimpleTable(document.getElementById('chartEvolucionVentas-table'), cols, trows);
-  }
-
-  // Valores distintos presentes en un campo de facturas, ordenados
-  // alfabéticamente, para poblar los <select> de filtro dinámicamente
-  // (así no hay que hardcodear categorías/áreas que pueden cambiar en el Sheet).
-  function valoresUnicosFacturas(campo) {
-    var set = {};
-    RAW.facturas.forEach(function (f) { if (f[campo]) set[f[campo]] = true; });
-    return Object.keys(set).sort(function (a, b) { return a.localeCompare(b, 'es'); });
   }
 
   // Años con movimientos de altas/bajas (incluye antigüedad histórica de gente
@@ -3243,39 +3800,59 @@
         info: 'Costo real por hora trabajada = Costo laboral total del mes / Horas totales trabajadas del mes'
       }
     ];
-    if (!esTodos) tiles.push({ label: 'Altas del Mes', value: formatNum(altasMesRef), detail: 'Altas registradas', periodo: mesRefNombre + ' ' + anioOperativo });
-    tiles.push({ label: 'Altas Acumuladas en el Año', value: formatNum(altasAcum), detail: 'Altas acumuladas', periodo: 'Enero–' + mesRefNombre + ' ' + anioOperativo });
-    if (!esTodos) tiles.push({ label: 'Bajas del Mes', value: formatNum(bajasMesRef), detail: 'Bajas registradas', periodo: mesRefNombre + ' ' + anioOperativo });
-    tiles.push({ label: 'Bajas Acumuladas en el Año', value: formatNum(bajasAcum), detail: 'Bajas acumuladas', periodo: 'Enero–' + mesRefNombre + ' ' + anioOperativo });
-    tiles.forEach(function (t) {
-      var d = document.createElement('div'); d.className = 'kpi-tile';
-      var l = document.createElement('div'); l.className = 'label';
-      var lTxt = document.createElement('span'); lTxt.textContent = t.label;
-      l.appendChild(lTxt);
-      if (t.info) l.appendChild(kpiInfoIcon(t.info));
-      var v = document.createElement('div'); v.className = 'value'; v.textContent = t.value;
-      d.appendChild(l); d.appendChild(v);
-      // Siempre se reserva el renglón de Detalle, aunque esté vacío — así el
-      // Mes/Año y la caja de comparación quedan a la misma altura en todas las
-      // tarjetas de la fila, tengan o no detalle (ej. Nómina Vigente y Horas
-      // Totales Trabajadas no tienen detalle, pero Costo Total y Precio sí).
-      var det = document.createElement('div'); det.className = 'sub'; det.textContent = t.detail || ' ';
-      if (!t.detail) det.setAttribute('aria-hidden', 'true');
-      d.appendChild(det);
-      if (t.periodo) {
-        var per = document.createElement('div'); per.className = 'periodo'; per.textContent = t.periodo;
-        d.appendChild(per);
-      }
-      if (t.deltaBox && t.deltaBox.length) {
-        var box = document.createElement('div'); box.className = 'kpi-delta-box';
-        t.deltaBox.forEach(function (txt) {
-          var row = document.createElement('div'); row.className = 'kpi-delta-row'; row.textContent = txt;
-          box.appendChild(row);
-        });
-        d.appendChild(box);
-      }
-      wrap.appendChild(d);
-    });
+    tiles.forEach(function (t) { wrap.appendChild(kpiTileElResumenSueldos(t)); });
+
+    // Altas/Bajas (2026-10): trasladadas a su propia fila dentro de
+    // "Dotación y Rotación" — antes compartían la fila de 8 de Resumen
+    // General con las 4 de arriba; ahora Resumen General muestra solo las 4
+    // que tienen la caja de comparación celeste (deltaBox). Mismo cálculo y
+    // mismo diseño de tarjeta (kpiTileElResumenSueldos), solo cambia el
+    // contenedor donde se pintan.
+    var tilesDotacion = [];
+    if (!esTodos) tilesDotacion.push({ label: 'Altas del Mes', value: formatNum(altasMesRef), detail: 'Altas registradas', periodo: mesRefNombre + ' ' + anioOperativo });
+    tilesDotacion.push({ label: 'Altas Acumuladas en el Año', value: formatNum(altasAcum), detail: 'Altas acumuladas', periodo: 'Enero–' + mesRefNombre + ' ' + anioOperativo });
+    if (!esTodos) tilesDotacion.push({ label: 'Bajas del Mes', value: formatNum(bajasMesRef), detail: 'Bajas registradas', periodo: mesRefNombre + ' ' + anioOperativo });
+    tilesDotacion.push({ label: 'Bajas Acumuladas en el Año', value: formatNum(bajasAcum), detail: 'Bajas acumuladas', periodo: 'Enero–' + mesRefNombre + ' ' + anioOperativo });
+    var wrapDotacion = document.getElementById('kpiRowDotacion');
+    if (wrapDotacion) {
+      wrapDotacion.innerHTML = '';
+      tilesDotacion.forEach(function (t) { wrapDotacion.appendChild(kpiTileElResumenSueldos(t)); });
+    }
+  }
+
+  // Constructor de tarjeta KPI compartido por Resumen General y por la fila
+  // de Altas/Bajas de Dotación y Rotación (ver renderKpis, arriba) — se separa
+  // en su propia función para que ambas filas usen exactamente el mismo
+  // diseño (ícono de info, renglón de Detalle siempre reservado, caja de
+  // comparación celeste) sin duplicar el código.
+  function kpiTileElResumenSueldos(t) {
+    var d = document.createElement('div'); d.className = 'kpi-tile';
+    var l = document.createElement('div'); l.className = 'label';
+    var lTxt = document.createElement('span'); lTxt.textContent = t.label;
+    l.appendChild(lTxt);
+    if (t.info) l.appendChild(kpiInfoIcon(t.info));
+    var v = document.createElement('div'); v.className = 'value'; v.textContent = t.value;
+    d.appendChild(l); d.appendChild(v);
+    // Siempre se reserva el renglón de Detalle, aunque esté vacío — así el
+    // Mes/Año y la caja de comparación quedan a la misma altura en todas las
+    // tarjetas de la fila, tengan o no detalle (ej. Nómina Vigente y Horas
+    // Totales Trabajadas no tienen detalle, pero Costo Total y Precio sí).
+    var det = document.createElement('div'); det.className = 'sub'; det.textContent = t.detail || ' ';
+    if (!t.detail) det.setAttribute('aria-hidden', 'true');
+    d.appendChild(det);
+    if (t.periodo) {
+      var per = document.createElement('div'); per.className = 'periodo'; per.textContent = t.periodo;
+      d.appendChild(per);
+    }
+    if (t.deltaBox && t.deltaBox.length) {
+      var box = document.createElement('div'); box.className = 'kpi-delta-box';
+      t.deltaBox.forEach(function (txt) {
+        var row = document.createElement('div'); row.className = 'kpi-delta-row'; row.textContent = txt;
+        box.appendChild(row);
+      });
+      d.appendChild(box);
+    }
+    return d;
   }
 
   function emphasisOpacity(cat) {
@@ -3621,6 +4198,8 @@
     renderKpisCompras();
     renderTortasCompras();
     actualizarDesgloseFacturas();
+    renderBarrasClasificacionCompras();
+    renderMantenimientoCompras();
   }
 
   // 4 gráficos de torta que siguen el filtro único de Mes de la barra de
@@ -3661,6 +4240,75 @@
     });
   }
 
+  // 4 gráficos de barras horizontales (2026-10, reemplazan a los 7 filtros
+  // grandes de "Compras por Mes") que muestran directamente cuánto se gastó
+  // por cada valor de 4 clasificaciones, sin tener que filtrar para
+  // averiguarlo. Mismo filtro único de Mes que las 4 tortas de Distribución
+  // de las Compras (delPeriodo acá abajo es idéntico al de renderTortasCompras).
+  var BARRAS_CLASIFICACION_COMPRAS = [
+    { campo: 'subcategoria', chartId: 'barSubcategoriaCompras' },
+    { campo: 'categoria', chartId: 'barCategoriaCompras' },
+    { campo: 'categoriaMacro', chartId: 'barCategoriaMacroCompras' },
+    { campo: 'imputacionGestion', chartId: 'barImputacionCompras' }
+  ];
+
+  function renderBarrasClasificacionCompras() {
+    var delPeriodo = RAW.facturas.filter(function (f) {
+      if (f.anio !== anioOperativoCompras) return false;
+      if (stateCompras.mes !== 'todos' && f.mesIdx !== stateCompras.mes) return false;
+      return true;
+    });
+
+    BARRAS_CLASIFICACION_COMPRAS.forEach(function (b) {
+      var info = construirDesgloseInfo(delPeriodo, b.campo, PALETA_FACTURAS_EXT);
+      var items = info.orden.map(function (v) {
+        return { label: etiquetaValorDesglose(v), value: info.totales[v], color: info.colores[v] };
+      });
+      var chartEl = document.getElementById(b.chartId);
+      renderHorizontalBar(chartEl, items, { valueFormatter: formatCompact, valueLabel: 'Total facturado', leftMargin: 190 });
+      var total = items.reduce(function (s, it) { return s + it.value; }, 0);
+      renderSimpleTable(document.getElementById(b.chartId + '-table'), ['Valor', 'Monto', '% del total'], items.map(function (it) {
+        return [it.label, formatMoney(it.value), total > 0 ? (it.value / total * 100).toFixed(1) + '%' : '0%'];
+      }));
+    });
+  }
+
+  // Mantenimiento y Reparaciones (2026-10): agrupa SOLO para esta vista las
+  // subcategorías de factura de SUBCATEGORIAS_MANTENIMIENTO (definidas más
+  // arriba, confirmadas con Rocío) — no crea un campo nuevo en RAW.facturas
+  // ni toca la categorización original, arma el desglose al vuelo acá mismo.
+  // Mismo filtro único de Mes que el resto de Compras.
+  function renderMantenimientoCompras() {
+    var delPeriodo = RAW.facturas.filter(function (f) {
+      if (f.anio !== anioOperativoCompras) return false;
+      if (stateCompras.mes !== 'todos' && f.mesIdx !== stateCompras.mes) return false;
+      return SUBCATEGORIAS_MANTENIMIENTO.indexOf(normalizarEncabezado(f.subcategoria)) !== -1;
+    });
+
+    var totalesPorSubcategoria = {};
+    delPeriodo.forEach(function (f) {
+      var v = f.subcategoria || 'Sin dato';
+      totalesPorSubcategoria[v] = (totalesPorSubcategoria[v] || 0) + f.total;
+    });
+    var ordenados = Object.keys(totalesPorSubcategoria).sort(function (a, b) { return totalesPorSubcategoria[b] - totalesPorSubcategoria[a]; });
+    var items = ordenados.map(function (v, i) {
+      return { label: etiquetaValorDesglose(v), value: totalesPorSubcategoria[v], color: PALETA_FACTURAS_EXT[i % PALETA_FACTURAS_EXT.length] };
+    });
+
+    var chartEl = document.getElementById('barMantenimientoCompras');
+    renderHorizontalBar(chartEl, items, {
+      valueFormatter: formatCompact, valueLabel: 'Total facturado',
+      // Etiquetas largas (ej. "C4 - Herramientas Y Componentes Menores"):
+      // más ancho para el nombre, tipografía algo más chica y salto de
+      // línea si no entra en una sola (2026-10, pedido de Rocío).
+      leftMargin: 250, rowHeight: 40, labelFontSize: 10.5, labelLineHeight: 12.5, wrapLabels: true
+    });
+    var total = items.reduce(function (s, it) { return s + it.value; }, 0);
+    renderSimpleTable(document.getElementById('barMantenimientoCompras-table'), ['Concepto', 'Monto', '% del total'], items.map(function (it) {
+      return [it.label, formatMoney(it.value), total > 0 ? (it.value / total * 100).toFixed(1) + '%' : '0%'];
+    }));
+  }
+
   function sumaTotalFacturado(lista) {
     return lista.reduce(function (s, f) { return s + f.total; }, 0);
   }
@@ -3690,10 +4338,20 @@
       if (deltaTxt) deltaTotal.push(deltaTxt);
     }
 
-    // Pendiente de pago: estado actual, no depende del mes elegido arriba
-    // (una factura vieja sin pagar sigue pendiente hoy).
-    var pendientes = RAW.facturas.filter(function (f) { return f.estadoPago !== 'Pagado'; });
-    var montoPendiente = sumaTotalFacturado(pendientes);
+    // Compras de Materias Primas (2026-10, reemplaza a "Pendiente de Pago"):
+    // monto total del período elegido arriba (delMesRef, el mismo universo
+    // que usan Total Facturado y Cantidad de Facturas de esta misma fila)
+    // cuya Categoría Macro es "Materias Primas" — confirmado por Rocío como
+    // el campo/valor real de REGISTRO DE FACTURAS. Con comparación contra el
+    // mes anterior, mismo criterio que el resto de esta fila.
+    var esMateriaPrima = function (f) { return normalizarEncabezado(f.categoriaMacro) === normalizarEncabezado('Materias Primas'); };
+    var materiasPrimasMesRef = sumaTotalFacturado(delMesRef.filter(esMateriaPrima));
+    var materiasPrimasMesAnterior = sumaTotalFacturado(delMesAnterior.filter(esMateriaPrima));
+    var deltaMateriasPrimas = [];
+    if (!esTodos && mesRef > 0) {
+      var deltaMPTxt = formatDeltaMoney(materiasPrimasMesRef - materiasPrimasMesAnterior, 'respecto del mes anterior');
+      if (deltaMPTxt) deltaMateriasPrimas.push(deltaMPTxt);
+    }
 
     var porProveedor = {};
     delMesRef.forEach(function (f) { porProveedor[f.proveedor] = (porProveedor[f.proveedor] || 0) + f.total; });
@@ -3716,10 +4374,11 @@
         periodo: periodoLbl
       },
       {
-        label: 'Pendiente de Pago',
-        value: formatMoney(montoPendiente),
-        detail: formatNum(pendientes.length) + ' facturas pendientes',
-        info: 'No depende del mes elegido arriba: es el total no pagado a día de hoy, de facturas de cualquier fecha.'
+        label: esTodos ? 'Compras de Materias Primas en el Año' : 'Compras de Materias Primas del Mes',
+        value: formatMoney(materiasPrimasMesRef),
+        periodo: periodoLbl,
+        deltaBox: deltaMateriasPrimas,
+        info: 'Monto total facturado en compras con Categoría Macro = "Materias Primas", dentro del mismo período que el resto de esta fila.'
       },
       {
         label: esTodos ? 'Proveedor Principal del Año' : 'Proveedor Principal del Mes',
@@ -3756,26 +4415,24 @@
     });
   }
 
-  // Los 7 filtros se combinan con Y lógico: una factura solo entra si cumple
-  // TODOS los filtros activos a la vez (los que están en "Todas" no restringen).
-  // Facturas pre-filtradas por Año + los 7 filtros combinables (Y lógico) —
-  // esta es la base sobre la que se arma el desglose y se calculan totales.
+  // Pre-filtrado por Año únicamente — los 7 filtros combinables que tenía
+  // antes esta función (Categoría, Categoría Macro, Tipo de Ítem, Imputación
+  // Gestión, Flujo de Fondos, Comportamiento del Costo, Área) se quitaron
+  // (2026-10, a pedido de Rocío): esa clasificación ahora se ve directamente
+  // en los 4 gráficos de barras de "Compras por Mes" (ver
+  // renderBarrasClasificacionCompras), en vez de depender de filtros grandes
+  // para acotar la vista. "Desglosar por" se mantiene — sigue siendo la base
+  // del gráfico apilado de este mismo pre-filtrado.
   //
   // A propósito NO se filtra acá por el Mes de la barra de arriba (a
-  // diferencia de KPIs y Distribución de Facturación, que sí lo siguen):
-  // "Facturación por Mes" es un gráfico de tendencia — si se recortara a un
-  // solo mes quedaría una sola columna, perdiendo el sentido de comparar mes a
-  // mes (mismo criterio que ya usan los gráficos "por mes" de Sueldos, que en
-  // vez de recortarse resaltan la columna del mes elegido — ver emphasisIndex
-  // en renderFacturasMes).
+  // diferencia de KPIs y Distribución de las Compras, que sí lo siguen):
+  // "Compras por Mes" es un gráfico de tendencia — si se recortara a un solo
+  // mes quedaría una sola columna, perdiendo el sentido de comparar mes a mes
+  // (mismo criterio que ya usan los gráficos "por mes" de Sueldos, que en vez
+  // de recortarse resaltan la columna del mes elegido — ver emphasisIndex en
+  // renderFacturasMes).
   function facturasPreFiltradas() {
-    return RAW.facturas.filter(function (f) {
-      if (f.anio !== anioOperativoCompras) return false;
-      return FILTROS_FACTURA_CAMPOS.every(function (fc) {
-        var val = stateCompras.filtros[fc.campo];
-        return val === 'Todas' || f[fc.campo] === val;
-      });
-    });
+    return RAW.facturas.filter(function (f) { return f.anio === anioOperativoCompras; });
   }
 
   // Ranking y colores de los valores de la variable de desglose elegida,
@@ -3969,19 +4626,25 @@
       sumHoras += horasTrabajadasMes(anio, m);
     }
 
+    // Textos de los íconos de info (2026-10, reemplazan la aclaración fija que
+    // antes quedaba siempre visible debajo de la fila de KPIs — ver kpiInfoIcon).
+    var INFO_COSTO_TOTAL = 'Sueldos (haberes + aportes + contribuciones) + Total Facturación de Compras.';
+    var INFO_COSTO_DIA = 'Comprende días hábiles (lunes a viernes, sin descontar feriados).';
+    var INFO_COSTO_HORA = 'Utiliza las horas trabajadas cargadas en la planilla de sueldos.';
+
     var tilesTotal;
     if (esTodos) {
       tilesTotal = [
         {
-          label: 'Costo Total Acumulado en el Año', value: formatMoney(sumCosto),
+          label: 'Costo Total Acumulado en el Año', value: formatMoney(sumCosto), info: INFO_COSTO_TOTAL,
           sub: 'Enero–' + mesRefNombre + ' ' + anio + ' — Sueldos + Compras'
         },
         {
-          label: 'Costo Total por Día (Año)', value: sumDias > 0 ? formatMoney(sumCosto / sumDias) : '—',
+          label: 'Costo Total por Día (Año)', value: sumDias > 0 ? formatMoney(sumCosto / sumDias) : '—', info: INFO_COSTO_DIA,
           sub: sumDias + ' días hábiles en el período'
         },
         {
-          label: 'Costo Total por Hora (Año)', value: sumHoras > 0 ? formatMoney(sumCosto / sumHoras) : '—',
+          label: 'Costo Total por Hora (Año)', value: sumHoras > 0 ? formatMoney(sumCosto / sumHoras) : '—', info: INFO_COSTO_HORA,
           sub: sumHoras > 0 ? formatNum(sumHoras) + ' horas trabajadas en el período' : 'Sin horas cargadas en el período'
         }
       ];
@@ -3993,15 +4656,15 @@
       var horas = horasTrabajadasMes(anio, mesRef);
       tilesTotal = [
         {
-          label: 'Costo Total del Mes', value: formatMoney(costoTotal),
+          label: 'Costo Total del Mes', value: formatMoney(costoTotal), info: INFO_COSTO_TOTAL,
           sub: mesRefNombre + ' ' + anio + ' — Sueldos ' + formatCompact(cSueldos) + ' + Compras ' + formatCompact(cCompras)
         },
         {
-          label: 'Costo Total por Día', value: dias > 0 ? formatMoney(costoTotal / dias) : '—',
+          label: 'Costo Total por Día', value: dias > 0 ? formatMoney(costoTotal / dias) : '—', info: INFO_COSTO_DIA,
           sub: dias + ' días hábiles en ' + mesRefNombre
         },
         {
-          label: 'Costo Total por Hora', value: horas > 0 ? formatMoney(costoTotal / horas) : '—',
+          label: 'Costo Total por Hora', value: horas > 0 ? formatMoney(costoTotal / horas) : '—', info: INFO_COSTO_HORA,
           sub: horas > 0 ? formatNum(horas) + ' horas trabajadas en ' + mesRefNombre : 'Sin horas cargadas en ' + mesRefNombre
         }
       ];
@@ -4102,6 +4765,42 @@
     }));
   }
 
+  // Evolución Mensual del Costo Promedio Diario (2026-10, a pedido de Rocío):
+  // vive debajo de "Promedios del Año" — mismos 3 KPI de arriba resumen el
+  // período Enero–mesRef en un solo número; este gráfico desglosa ese mismo
+  // cálculo (Costo Total del mes ÷ días hábiles del mes, idéntica fórmula que
+  // el KPI "Costo Promedio Diario") mes a mes, para ver la evolución en vez de
+  // un único promedio. Muestra TODOS los meses del año con datos (no depende
+  // del filtro de Mes de arriba, que solo acota el rango de ese promedio
+  // acumulado) — mismo criterio de "unión de meses con datos" que usa
+  // renderCostoPorMes() más abajo.
+  function renderCostoPromedioDiarioMensual() {
+    var anio = anioOperativo;
+    var chartEl = document.getElementById('chartCostoPromedioDiarioMensual');
+    if (!chartEl) return;
+    if (anio === null) return emptyState(chartEl);
+
+    var mesesSet = {};
+    RAW.costoMensual.forEach(function (r) { if (r.anio === anio) mesesSet[r.mesIdx] = true; });
+    RAW.facturas.forEach(function (f) { if (f.anio === anio) mesesSet[f.mesIdx] = true; });
+    var meses = Object.keys(mesesSet).map(Number).sort(function (a, b) { return a - b; });
+    if (!meses.length) return emptyState(chartEl);
+
+    var cats = meses.map(function (m) { return MESES_CORTO[m]; });
+    var valores = meses.map(function (m) {
+      var dias = diasHabilesEnMes(anio, m);
+      var costoMes = costoSueldosMes(anio, m) + costoComprasMes(anio, m);
+      return dias > 0 ? (costoMes / dias) : null;
+    });
+    var series = [{ name: 'Costo Promedio Diario', color: COLOR_SUELDOS_COSTOS, values: valores }];
+    renderLineChart(chartEl, cats, series, { valueFormatter: formatMoney, endLabels: false });
+
+    var trows = meses.map(function (m, i) {
+      return [cats[i], valores[i] === null ? '—' : formatMoney(valores[i])];
+    });
+    renderSimpleTable(document.getElementById('chartCostoPromedioDiarioMensual-table'), ['Mes', 'Costo Promedio Diario'], trows);
+  }
+
   // Costo por Mes: mismo tipo de gráfico (columnas apiladas + total arriba de
   // cada barra) que "Facturación por Mes" en Compras, pero con 2 series fijas
   // (Sueldos y Compras) en vez de un desglose elegible por el usuario — acá no
@@ -4122,21 +4821,25 @@
     if (!meses.length) return emptyState(chartEl);
 
     var cats = meses.map(function (m) { return MESES_CORTO[m]; });
-    // Imputación manual solicitada por Rocío: Enero/Febrero/Marzo no tienen
-    // datos de Compras cargados todavía, así que se agrega acá un monto
-    // estimado de $100.000.000 por mes como referencia visual — SOLO en este
-    // gráfico (no toca RAW.facturas ni ningún KPI/promedio de arriba, que
+    // Imputación manual solicitada por Rocío: Enero/Febrero/Marzo todavía no
+    // tienen datos reales cargados, así que ESOS 3 MESES muestran un Costo
+    // Total fijo de $200.000.000 en vez del valor calculado — SOLO en este
+    // gráfico (no toca RAW.facturas/RAW.costoMensual ni ningún KPI/promedio
+    // de arriba o el gráfico de evolución de Costo Promedio Diario, que
     // siguen calculándose únicamente con datos reales). Se dibuja como
-    // segmento hueco con borde punteado (ver ser.hollow en renderBarChart)
-    // para que quede claro que es una estimación y no un monto cargado.
+    // segmento hueco con borde punteado (ver ser.hollow en renderBarChart) y
+    // con su propio nombre de serie/leyenda para que quede claro que es un
+    // valor imputado por falta de datos y no un monto real cargado; los
+    // meses de Abril en adelante siguen la lógica normal (Sueldos + Compras).
     var MESES_IMPUTACION_COSTOS = [0, 1, 2]; // Ene, Feb, Mar
-    var MONTO_IMPUTACION_COSTOS = 100000000;
+    var MONTO_IMPUTACION_COSTOS = 200000000;
+    function esMesImputado(m) { return MESES_IMPUTACION_COSTOS.indexOf(m) >= 0; }
     var series = [
-      { name: 'Sueldos', color: COLOR_SUELDOS_COSTOS, values: meses.map(function (m) { return costoSueldosMes(anio, m); }) },
-      { name: 'Compras', color: PALETA_TORTA_COSTOS[0], values: meses.map(function (m) { return costoComprasMes(anio, m); }) },
+      { name: 'Sueldos', color: COLOR_SUELDOS_COSTOS, values: meses.map(function (m) { return esMesImputado(m) ? 0 : costoSueldosMes(anio, m); }) },
+      { name: 'Compras', color: PALETA_TORTA_COSTOS[0], values: meses.map(function (m) { return esMesImputado(m) ? 0 : costoComprasMes(anio, m); }) },
       {
-        name: 'Imputación estimada por dato faltante', color: COLOR_IMPUTACION_COSTOS, hollow: true,
-        values: meses.map(function (m) { return MESES_IMPUTACION_COSTOS.indexOf(m) >= 0 ? MONTO_IMPUTACION_COSTOS : 0; })
+        name: 'Valor imputado por datos faltantes', color: COLOR_IMPUTACION_COSTOS, hollow: true,
+        values: meses.map(function (m) { return esMesImputado(m) ? MONTO_IMPUTACION_COSTOS : 0; })
       }
     ];
     renderBarChart(chartEl, cats, series, {
@@ -4146,6 +4849,9 @@
 
     var cols = ['Mes', 'Sueldos', 'Compras', 'Costo Total'];
     var trows = meses.map(function (m, i) {
+      if (esMesImputado(m)) {
+        return [cats[i], '—', '—', formatMoney(MONTO_IMPUTACION_COSTOS) + ' (valor imputado por datos faltantes)'];
+      }
       var cSueldos = costoSueldosMes(anio, m);
       var cCompras = costoComprasMes(anio, m);
       return [cats[i], formatMoney(cSueldos), formatMoney(cCompras), formatMoney(cSueldos + cCompras)];
@@ -4171,9 +4877,25 @@
   // Margen) por mes, con la misma definición de Costos (Sueldos + Compras) y
   // Margen (Ingresos − Costos) en los dos. Lo único que cambia entre ambos es
   // la fuente de Ingresos:
-  //  - Gráfico 1: Ingresos estimados según Remitos (ingresosRemitosMes).
-  //  - Gráfico 2: Ingresos estimados según Cobros Proyectados, de la hoja
-  //    INGRESOS ESTIMADOS de Ventas (ingresosEstimadosMes).
+  //  - Gráfico 1 ("Margen Bruto según Despacho de Mercadería"): Ingreso
+  //    Estimado por Despacho, Cantidad × Precio Estimado de cada remito
+  //    (ingresosRemitosMes) — misma valorización que "Despacho de Mercadería"
+  //    en Ventas.
+  //  - Gráfico 2 ("Margen Bruto según Facturación e Ingresos Proyectados"):
+  //    Ingresos Proyectados, de la hoja INGRESOS ESTIMADOS de Ventas
+  //    (ingresosEstimadosMes) — mismo dato que "Ingresos y Facturación" en
+  //    Ventas.
+  //
+  // Renombrado 2026-10 a pedido de Rocío, para alinear esta sección con los
+  // dos enfoques de ingresos ya definidos en Ventas (Despacho de Mercadería e
+  // Ingresos y Facturación) — el título del gráfico 2 menciona "Facturación e
+  // Ingresos Proyectados" porque ese es el bloque de Ventas del que toma el
+  // dato, pero el ingreso que entra en la cuenta del Margen sigue siendo
+  // únicamente Ingresos Proyectados (ella lo confirmó así explícitamente:
+  // Facturación Registrada no se suma ni se usa como respaldo) — la fórmula
+  // de ingresosEstimadosMes() no cambió, solo el título/leyenda/nombre de
+  // serie para que digan lo que realmente se está mostrando.
+  //
   // Esta función se llama desde los dos .then() de carga (Sueldos+Compras y
   // Ventas, que son pedidos independientes) porque necesita datos de ambos:
   // se puede llamar de forma segura ni bien resuelve cualquiera de los dos,
@@ -4202,8 +4924,8 @@
     if (anio == null || !meses.length) {
       emptyState(chartRemitosEl);
       emptyState(chartFacturacionEl);
-      renderSimpleTable(document.getElementById('chartMargenRemitos-table'), ['Mes', 'Ingresos', 'Costos', 'Margen'], []);
-      renderSimpleTable(document.getElementById('chartMargenFacturacion-table'), ['Mes', 'Ingresos', 'Costos', 'Margen'], []);
+      renderSimpleTable(document.getElementById('chartMargenRemitos-table'), ['Mes', 'Ingreso Estimado por Despacho', 'Costos', 'Margen Bruto'], []);
+      renderSimpleTable(document.getElementById('chartMargenFacturacion-table'), ['Mes', 'Ingresos Proyectados', 'Costos', 'Margen Bruto'], []);
       return;
     }
 
@@ -4222,38 +4944,51 @@
     // tocar ese color compartido. Ingresos y Costos sí mantienen su color
     // categórico fijo (Navy/Teal). Mismo criterio en los dos gráficos.
     function colorPorSignoMargen(v) { return v < 0 ? COLOR_MARGEN_NEGATIVO : COLOR_MARGEN_POSITIVO; }
-    var leyendaConEstado = [
-      { color: PALETA_TORTA[0], label: 'Ingresos' },
+    // Leyenda separada por gráfico (2026-10): antes era una sola, genérica
+    // ("Ingresos"), compartida entre los dos — ahora que cada gráfico nombra
+    // su propia fuente de ingreso en el título, la leyenda y el nombre de
+    // serie también lo dicen explícito, para no volver a mezclar "remitos",
+    // "facturación" e "ingresos" como si fueran lo mismo.
+    var leyendaDespacho = [
+      { color: PALETA_TORTA[0], label: 'Ingreso Estimado por Despacho' },
+      { color: PALETA_TORTA[1], label: 'Costos' },
+      { color: COLOR_MARGEN_POSITIVO, label: 'Margen positivo' },
+      { color: COLOR_MARGEN_NEGATIVO, label: 'Margen negativo' }
+    ];
+    var leyendaProyectados = [
+      { color: PALETA_TORTA[0], label: 'Ingresos Proyectados' },
       { color: PALETA_TORTA[1], label: 'Costos' },
       { color: COLOR_MARGEN_POSITIVO, label: 'Margen positivo' },
       { color: COLOR_MARGEN_NEGATIVO, label: 'Margen negativo' }
     ];
 
+    // Gráfico 1 — "Margen Bruto según Despacho de Mercadería".
     renderBarChart(chartRemitosEl, cats, [
-      { name: 'Ingresos', color: PALETA_TORTA[0], values: ingresosRemitos },
+      { name: 'Ingreso Estimado por Despacho', color: PALETA_TORTA[0], values: ingresosRemitos },
       { name: 'Costos', color: PALETA_TORTA[1], values: costos },
-      { name: 'Margen', color: COLOR_MARGEN_POSITIVO, colorFor: colorPorSignoMargen, values: margenRemitos }
+      { name: 'Margen Bruto', color: COLOR_MARGEN_POSITIVO, colorFor: colorPorSignoMargen, values: margenRemitos }
     ], {
       width: 960, height: 380, stacked: false, barLabels: true,
       valueFormatter: formatCompact, tooltipFormatter: formatMoney,
-      legendItems: leyendaConEstado, xAxisLabel: 'Mes', yAxisLabel: 'Monto ($)'
+      legendItems: leyendaDespacho, xAxisLabel: 'Mes', yAxisLabel: 'Monto ($)'
     });
-    renderSimpleTable(document.getElementById('chartMargenRemitos-table'), ['Mes', 'Ingresos', 'Costos', 'Margen'],
+    renderSimpleTable(document.getElementById('chartMargenRemitos-table'), ['Mes', 'Ingreso Estimado por Despacho', 'Costos', 'Margen Bruto'],
       meses.map(function (m, i) { return [cats[i], formatMoney(ingresosRemitos[i]), formatMoney(costos[i]), formatMoney(margenRemitos[i])]; }));
 
-    // Gráfico 2 — Ingresos según la hoja "Ingresos Estimados" (Cobros
-    // Proyectados por semana, agrupados acá por mes). Misma estructura y
-    // mismos colores que el gráfico 1.
+    // Gráfico 2 — "Margen Bruto según Facturación e Ingresos Proyectados":
+    // ingresos según la hoja "Ingresos Estimados" (Cobros Proyectados por
+    // semana, agrupados acá por mes). Misma estructura y mismos colores que
+    // el gráfico 1.
     renderBarChart(chartFacturacionEl, cats, [
-      { name: 'Ingresos', color: PALETA_TORTA[0], values: ingresosEstimados },
+      { name: 'Ingresos Proyectados', color: PALETA_TORTA[0], values: ingresosEstimados },
       { name: 'Costos', color: PALETA_TORTA[1], values: costos },
-      { name: 'Margen', color: COLOR_MARGEN_POSITIVO, colorFor: colorPorSignoMargen, values: margenEstimados }
+      { name: 'Margen Bruto', color: COLOR_MARGEN_POSITIVO, colorFor: colorPorSignoMargen, values: margenEstimados }
     ], {
       width: 960, height: 380, stacked: false, barLabels: true,
       valueFormatter: formatCompact, tooltipFormatter: formatMoney,
-      legendItems: leyendaConEstado, xAxisLabel: 'Mes', yAxisLabel: 'Monto ($)'
+      legendItems: leyendaProyectados, xAxisLabel: 'Mes', yAxisLabel: 'Monto ($)'
     });
-    renderSimpleTable(document.getElementById('chartMargenFacturacion-table'), ['Mes', 'Ingresos', 'Costos', 'Margen'],
+    renderSimpleTable(document.getElementById('chartMargenFacturacion-table'), ['Mes', 'Ingresos Proyectados', 'Costos', 'Margen Bruto'],
       meses.map(function (m, i) { return [cats[i], formatMoney(ingresosEstimados[i]), formatMoney(costos[i]), formatMoney(margenEstimados[i])]; }));
   }
 
@@ -4343,7 +5078,10 @@
   // duplicar el armado de nodos.
   function kpiTileEl(t) {
     var d = document.createElement('div'); d.className = 'kpi-tile';
-    var l = document.createElement('div'); l.className = 'label'; l.textContent = t.label;
+    var l = document.createElement('div'); l.className = 'label';
+    var lTxt = document.createElement('span'); lTxt.textContent = t.label;
+    l.appendChild(lTxt);
+    if (t.info) l.appendChild(kpiInfoIcon(t.info));
     var v = document.createElement('div'); v.className = 'value' + (t.valueClass ? ' ' + t.valueClass : ''); v.textContent = t.value;
     d.appendChild(l); d.appendChild(v);
     if (t.sub) {
